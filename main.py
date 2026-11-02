@@ -22,6 +22,16 @@ def _ensure_std_streams() -> None:
 
 
 def _enable_dpi() -> None:
+    user32 = ctypes.windll.user32
+    # 优先 PER_MONITOR_AWARE_V2：多显示器、不同缩放比例时，
+    # GetClientRect/ClientToScreen 返回的才是真实物理像素，
+    # 系统鼠标换算才不会偏（换一台电脑就点不到，多半是这里没生效）。
+    try:
+        if hasattr(user32, "SetProcessDpiAwarenessContext"):
+            if user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+                return
+    except Exception:
+        pass
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
         return
