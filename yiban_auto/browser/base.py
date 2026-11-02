@@ -112,6 +112,10 @@ class BrowserEngine(abc.ABC):
         """用系统级真实鼠标点击视口坐标 (x, y)；不支持时返回 False。"""
         return False
 
+    def lock_window(self, hwnd: int) -> bool:
+        """手动指定浏览器窗口句柄（GUI 捕捉浏览器用）；不支持的引擎返回 False。"""
+        return False
+
     def element_screenshot(self, selector: str, path: str, scale: float = 1.0) -> bool:
         """截取单个元素；scale>1 可放大截图（提高验证码识别率）。"""
         return False
