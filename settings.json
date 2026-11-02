@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "browser": {
+    "engine": "auto",
+    "browser_path": "",
+    "profile_dir": "",
+    "headless": false,
+    "keep_browser_open": false,
+    "window_width": 1280,
+    "window_height": 900
+  },
+  "posting": {
+    "interval_seconds": 30,
+    "repeat_count": 1,
+    "retry_count": 2,
+    "retry_interval_seconds": 20,
+    "regenerate_on_retry": true,
+    "verify_via_http": true,
+    "verify_url": "https://s.yiban.cn/bbs/mypost",
+    "community": "",
+    "board": "",
+    "cover_mode": 1
+  },
+  "content": {
+    "mode": "template",
+    "template_category": "日常寒暄",
+    "preset_items": [],
+    "preset_pick": "sequential",
+    "llm": {
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-4o-mini",
+      "temperature": 0.8,
+      "timeout_seconds": 90
+    }
+  },
+  "captcha": {
+    "mode": "auto",
+    "attempts": 2,
+    "retry_interval_seconds": 4,
+    "auto_cv": true,
+    "click_mode": "system",
+    "auto_slider": true,
+    "auto_ocr": true,
+    "vision": {
+      "enabled": true,
+      "base_url": "",
+      "api_key": "",
+      "model": "",
+      "timeout_seconds": 60
+    },
+    "http_url": "",
+    "http_key": "",
+    "command": "",
+    "timeout_seconds": 60,
+    "settle_seconds": 3,
+    "fallback_manual": true
+  },
+  "security": {
+    "remember_credentials": false
+  },
+  "advanced": {
+    "browser_start_timeout": 45,
+    "page_timeout": 30,
+    "login_timeout": 300,
+    "manual_timeout": 300,
+    "publish_timeout": 90,
+    "screenshot_on_error": true
+  }
+}
