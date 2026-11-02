@@ -176,6 +176,9 @@ class AutoEngine(BrowserEngine):
     def click_at_system(self, x: float, y: float) -> bool:
         return bool(self._call("click_at_system", x, y))
 
+    def lock_window(self, hwnd: int) -> bool:
+        return bool(self._call("lock_window", hwnd))
+
     def element_screenshot(self, selector: str, path: str, scale: float = 1.0) -> bool:
         return self._call("element_screenshot", selector, path, scale)
 
