@@ -322,6 +322,31 @@ class CDPEngine(BrowserEngine):
         except Exception:
             return 0
 
+    def _clean_browser_env(self, env: Dict[str, str]) -> Dict[str, str]:
+        """给浏览器一份干净的环境变量。
+
+        PyInstaller 单文件版会把解包目录（_MEIxxxx）排到 PATH 最前面，
+        浏览器子进程继承后可能加载到与自身冲突的 DLL，表现为页面直接
+        “Target crashed”；源码运行不会复现，只有打包后才出现。
+        """
+        clean = dict(env)
+        for key in ("PYTHONHOME", "PYTHONPATH", "PYTHONSTARTUP", "PYTHONIOENCODING"):
+            clean.pop(key, None)
+        for key in [k for k in clean if k.startswith("_PYI") or k.startswith("_MEI")]:
+            clean.pop(key, None)
+        system_root = clean.get("SystemRoot") or r"C:\Windows"
+        parts = [
+            system_root + r"\System32",
+            system_root,
+            system_root + r"\System32\Wbem",
+            system_root + r"\System32\WindowsPowerShell\v1.0",
+        ]
+        browser_dir = os.path.dirname(os.path.abspath(self._browser_path)) if getattr(self, "_browser_path", "") else ""
+        if browser_dir:
+            parts.append(browser_dir)
+        clean["PATH"] = ";".join(parts)
+        return clean
+
     def _launch_once(self) -> None:
         cfg = self._browser_config()
         headless = bool(cfg.get("headless", False))
@@ -343,11 +368,15 @@ class CDPEngine(BrowserEngine):
             "--remote-allow-origins=*",
             # Edge 的兼容层重启会杀掉最初由 Popen 启动的进程，再拉起一个新进程。
             # 新版 Edge 可能把调试端口参数丢掉，导致永远等不到 DevToolsActivePort。
-            "--disable-features=msRelaunchNoCompatLayer",
+            "--disable-features=msRelaunchNoCompatLayer,EdgeSyncConfirmation,msEdgeIdentityFRE,EdgeCollections",
             "--disable-background-mode",
             "--user-data-dir=" + str(self._profile),
             "--no-first-run",
             "--no-default-browser-check",
+            # 新用户数据目录下 Edge 会弹“同步确认/欢迎”窗口（edge://sync-confirmation-dialog），
+            # 它是独立顶层窗口，会盖住页面并吃掉真实鼠标点击——换一台电脑最容易踩这个坑。
+            "--disable-sync",
+            "--disable-translate",
             "--disable-blink-features=AutomationControlled",
             "--lang=zh-CN",
             "--window-size=" + str(width) + "," + str(height),
@@ -374,6 +403,7 @@ class CDPEngine(BrowserEngine):
             env["TMP"] = str(browser_tmp)
         except Exception:
             pass
+        env = self._clean_browser_env(env)
         try:
             self._proc = subprocess.Popen(
                 args,
@@ -479,6 +509,54 @@ class CDPEngine(BrowserEngine):
         except Exception:
             pass
         self.navigate("about:blank", timeout=15)
+        self._close_stray_pages()
+
+    _STRAY_PAGE_HINTS = (
+        "sync-confirmation",
+        "welcome",
+        "first-run",
+        "firstrun",
+        "default-browser",
+        "whats-new",
+        "signin-confirmation",
+        "profile-signin",
+        "msa-signin",
+    )
+
+    def _close_stray_pages(self) -> int:
+        """关掉浏览器自带的“同步确认/欢迎/默认浏览器”等弹窗页。
+
+        这些页面是**独立的顶层窗口**，会浮在真实页面上方，
+        系统鼠标点击会落到它们身上，表现为“点了没反应/识别不到”。
+        """
+        if not self._port:
+            return 0
+        closed = 0
+        try:
+            items = self._get_json("http://127.0.0.1:%d/json/list" % int(self._port), timeout=6)
+        except Exception:
+            return 0
+        for item in items:
+            if (item.get("type") or "") != "page":
+                continue
+            if item.get("id") == self._target_id:
+                continue
+            url = (item.get("url") or "").lower()
+            if not (url.startswith("edge://") or url.startswith("chrome://")):
+                continue
+            if not any(hint in url for hint in self._STRAY_PAGE_HINTS):
+                continue
+            try:
+                urllib.request.urlopen(
+                    "http://127.0.0.1:%d/json/close/%s" % (int(self._port), item.get("id")), timeout=4
+                ).read()
+                closed += 1
+            except Exception:
+                pass
+        if closed:
+            self._emit("info", "已关闭浏览器自带弹窗 %d 个（它们会挡住鼠标点击）。" % closed)
+            self.wait(0.3)
+        return closed
 
     def _get_json(self, url: str, timeout: float = 30) -> Dict[str, Any]:
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -541,6 +619,7 @@ class CDPEngine(BrowserEngine):
             raise BrowserError("打开页面失败：" + str(error_text))
         self.wait_ready(timeout)
         self.wait(0.4)
+        self._close_stray_pages()
 
     def eval(self, expression: str, await_promise: bool = False) -> Any:
         if self._client is None:
@@ -603,29 +682,97 @@ class CDPEngine(BrowserEngine):
         self.wait(0.08)
         self._mouse_click(float(x), float(y))
 
+    def lock_window(self, hwnd: int) -> bool:
+        """手动锁定浏览器窗口（GUI「捕捉浏览器」按钮用）。"""
+        try:
+            from ..sysmouse import has_render_child, is_valid
+        except Exception:
+            return False
+        if not is_valid(hwnd) or not has_render_child(hwnd):
+            return False
+        self._hwnd = int(hwnd)
+        self._emit("info", "已锁定浏览器窗口：hwnd=" + str(hwnd))
+        return True
+
+    def _resolve_hwnd(self) -> int:
+        """拿到装着网页的那个浏览器窗口。
+
+        顺序：手动锁定的句柄（仍有效）→ 按页面标题 + 进程号在所有浏览器窗口里找。
+        Edge 兼容层会把浏览器重启到新进程，所以不能只认 Popen 的 pid。
+        """
+        try:
+            from ..sysmouse import is_valid, locate_browser_window
+        except Exception:
+            return 0
+        locked = int(getattr(self, "_hwnd", 0) or 0)
+        if locked and is_valid(locked):
+            return locked
+        proc = getattr(self, "_proc", None)
+        pid = int(proc.pid) if proc is not None else 0
+        try:
+            title = self.title()
+        except Exception:
+            title = ""
+        hwnd = int(locate_browser_window(title, pid) or 0)
+        if hwnd:
+            self._hwnd = hwnd
+            self._emit("info", "已定位浏览器窗口：hwnd=" + str(hwnd) + "，标题 " + (title or "")[:40])
+        return hwnd
+
     def click_at_system(self, x: float, y: float) -> bool:
-        """真实鼠标点击（Windows SendInput）：换算到屏幕坐标后移动+按下。"""
+        """真实鼠标点击（Windows SendInput）：换算到屏幕坐标后移动+按下。
+
+        视口矩形优先取 Chrome_RenderWidgetHostHWND 子窗口的客户区（精确到网页内容），
+        拿不到时退回“窗口客户区 - 工具栏”估算。换算细节会写进日志，换机器排查时看这几行。
+        """
         proc = getattr(self, "_proc", None)
         if proc is None:
+            self._log_sysmouse("浏览器进程不存在，无法用系统鼠标。", "warn")
             return False
         try:
-            from ..sysmouse import click_client_point, find_window
-        except Exception:
+            from ..sysmouse import click_client_point
+        except Exception as exc:  # pragma: no cover - 非 Windows
+            self._log_sysmouse("系统鼠标模块不可用：" + str(exc), "warn")
             return False
         try:
-            hwnd = find_window(int(proc.pid))
+            hwnd = self._resolve_hwnd()
             if not hwnd:
+                self._log_sysmouse("没找到浏览器窗口（可能被最小化或换了进程），本次退回浏览器事件点击。", "warn")
                 return False
             view = self.eval("({w:window.innerWidth,h:window.innerHeight})") or {}
-            return bool(
-                click_client_point(
-                    hwnd, float(x), float(y),
-                    float(view.get("w") or 0),
-                    float(view.get("h") or 0),
+            view_w = float(view.get("w") or 0)
+            view_h = float(view.get("h") or 0)
+            detail: Dict[str, Any] = {}
+            ok = bool(click_client_point(hwnd, float(x), float(y), view_w, view_h, detail=detail))
+            if ok:
+                if not getattr(self, "_sysmouse_noted", False):
+                    self._sysmouse_noted = True
+                    self._log_sysmouse(
+                        "系统鼠标就绪：视口 %sx%s，窗口区域 %s，缩放 %s，页面坐标 (%.0f,%.0f) 对应屏幕 %s"
+                        % (int(view_w), int(view_h), detail.get("rect"), detail.get("scale"), x, y, detail.get("screen")),
+                        "info",
+                    )
+            else:
+                self._log_sysmouse(
+                    "系统鼠标换算失败：视口 %sx%s，%s" % (int(view_w), int(view_h), detail or "无细节"),
+                    "warn",
                 )
-            )
-        except Exception:
+            return ok
+        except Exception as exc:
+            self._log_sysmouse("系统鼠标点击异常：" + str(exc), "warn")
             return False
+
+    def _log_sysmouse(self, message: str, level: str = "info") -> None:
+        """同一条系统鼠标异常只记一次，避免刷屏。"""
+        key = str(abs(hash(message)))
+        seen = getattr(self, "_sysmouse_warned", None)
+        if seen is None:
+            seen = set()
+            self._sysmouse_warned = seen
+        if key in seen:
+            return
+        seen.add(key)
+        self._emit(level, message)
 
     def drag(self, x1: float, y1: float, x2: float, y2: float, duration: float = 1.0) -> None:
         """真实鼠标拖动：先按下，再按缓动曲线分步移动，最后松开。"""
