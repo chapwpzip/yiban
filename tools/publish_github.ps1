@@ -17,8 +17,8 @@ param(
     [string]$Description = "易班微社区自动发帖工具：自动登录、内容生成、自动填写提交、结果检测；验证码支持离线识图 / 视觉模型 / 外接服务",
     [switch]$Public,
     [switch]$DryRun,
-    [string]$ReleaseTag = "v1.1.7",
-    [string]$ReleaseZip = "release\YibanAutoPoster-v1.1.7.zip"
+    [string]$ReleaseTag = "v1.1.9",
+    [string]$ReleaseZip = "release\YibanAutoPoster-v1.1.9.zip"
 )
 
 $ErrorActionPreference = "Stop"
