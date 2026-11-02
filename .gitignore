@@ -1,0 +1,32 @@
+# 构建产物
+build/
+dist/
+release/
+*.spec.bak
+
+# 运行时数据
+__pycache__/
+*.py[cod]
+*.log
+logs/
+screenshots/
+temp/
+rttemp/
+research/
+
+# 本地配置与凭据
+settings.local.json
+credentials.dat
+*.token
+github_token.txt
+
+# 报告
+selftest-report.txt
+browser-check-report.txt
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
