@@ -142,6 +142,39 @@ def run_selftest(full: bool = True, headless: bool = True) -> Tuple[bool, str, P
                 _record(checks, "页面截图", shot.exists(), str(shot))
             except Exception as exc:
                 _record(checks, "页面截图", False, repr(exc))
+            if not headless:
+                # 系统鼠标换算自检：点一个已知坐标，看页面收到的坐标对不对。
+                # 换机器后“点不到”基本都出在这里（DPI 缩放 / 工具栏 / 侧边栏）。
+                try:
+                    # 在当前页面上盖一层透明遮罩记录点击坐标，避免点到真实链接跳走
+                    engine.eval(
+                        "(function(){var d=document.getElementById('__yb_probe');"
+                        "if(!d){d=document.createElement('div');d.id='__yb_probe';"
+                        "d.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;"
+                        "z-index:2147483647;background:transparent';document.body.appendChild(d);}"
+                        "window.__C=[];d.addEventListener('click',function(e){"
+                        "window.__C.push([e.clientX,e.clientY]);});return true;})()"
+                    )
+                    clicked = False
+                    first = []
+                    for _attempt in range(2):
+                        engine.wait(0.6)
+                        clicked = bool(engine.click_at_system(200, 140))
+                        engine.wait(0.5)
+                        got = engine.eval("window.__C") or []
+                        first = got[0] if got else []
+                        if first:
+                            break
+                    hit = bool(first) and abs(float(first[0]) - 200) <= 4 and abs(float(first[1]) - 140) <= 4
+                    _record(
+                        checks,
+                        "系统鼠标点击",
+                        clicked and hit,
+                        "请求 (200,140)，接口返回 " + str(clicked) + "，页面收到 " + (str(first) if first else "无"),
+                    )
+                    engine.eval("(function(){var d=document.getElementById('__yb_probe');if(d)d.remove();})()")
+                except Exception as exc:
+                    _record(checks, "系统鼠标点击", False, repr(exc))
         except Exception as exc:
             _record(checks, "CDP 浏览器/登录页", False, repr(exc))
             details.append(traceback.format_exc())
