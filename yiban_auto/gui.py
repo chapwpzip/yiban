@@ -27,6 +27,7 @@ from .config import (
     save_settings,
 )
 from . import secure_store
+from . import sysmouse
 from .captcha import CaptchaSolver
 from .content import ContentError, generate_post, validate_post
 from .flow import IMAGE_CAPTCHA_SELECTOR, SHUMEI_POPUP_SELECTOR, YibanFlow
@@ -96,6 +97,7 @@ class App:
         self._manual_failure_reason = ""
         self.running = False
         self.engine = None
+        self.locked_hwnd = 0
         self.worker: Optional[threading.Thread] = None
         self._closing = False
         self._last_screenshot = ""
@@ -1085,6 +1087,69 @@ class App:
             row=0, column=2, sticky="w", padx=(10, 0)
         )
 
+        # ---- 浏览器窗口：真实鼠标点击的“抓手” ----
+        capture_row = ttk.Frame(auto_checks)
+        capture_row.grid(row=1, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        window_status = tk.StringVar(
+            value=("已锁定 hwnd=%d" % int(getattr(self, "locked_hwnd", 0) or 0))
+            if getattr(self, "locked_hwnd", 0)
+            else "自动识别（按页面标题 + 进程找窗口）"
+        )
+
+        def capture_window() -> None:
+            messagebox.showinfo(
+                "捕捉浏览器窗口",
+                "点“确定”后本窗口会最小化。\n"
+                "请在 5 秒内把鼠标移到**浏览器窗口的网页内容区**上并停住，不要移动。\n"
+                "5 秒后程序会读取鼠标位置所在的窗口并锁定它（真实鼠标点击会用它）。",
+                parent=win,
+            )
+            try:
+                self.root.iconify()
+            except Exception:
+                pass
+            try:
+                win.withdraw()
+            except Exception:
+                pass
+
+            def finish() -> None:
+                hwnd = 0
+                try:
+                    hwnd = int(sysmouse.capture_under_cursor() or 0)
+                except Exception as exc:
+                    self._emit_log("warn", "捕捉窗口失败：" + str(exc))
+                try:
+                    self.root.deiconify()
+                    win.deiconify()
+                    win.lift()
+                except Exception:
+                    pass
+                if hwnd:
+                    self.locked_hwnd = hwnd
+                    title = sysmouse._window_title(hwnd)
+                    window_status.set("已锁定：" + (title[:26] or ("hwnd=%d" % hwnd)))
+                    self._emit_log("info", "已捕捉浏览器窗口 hwnd=%d，标题：%s" % (hwnd, title or "（无标题）"))
+                else:
+                    window_status.set("未捕捉到浏览器窗口，请重试")
+                    self._emit_log(
+                        "warn",
+                        "捕捉失败：鼠标下不是浏览器窗口。请把鼠标放到浏览器网页内容区域（不是桌面/其它程序）再试一次。",
+                    )
+
+            self.root.after(5000, finish)
+
+        def clear_window() -> None:
+            self.locked_hwnd = 0
+            window_status.set("自动识别（按页面标题 + 进程找窗口）")
+            self._emit_log("info", "已取消窗口锁定，改为自动识别浏览器窗口。")
+
+        ttk.Button(capture_row, text="捕捉浏览器窗口", command=capture_window).grid(row=0, column=0, sticky="w")
+        ttk.Button(capture_row, text="取消锁定", command=clear_window).grid(row=0, column=1, sticky="w", padx=(6, 0))
+        ttk.Label(capture_row, textvariable=window_status, style="Hint.TLabel").grid(
+            row=0, column=2, sticky="w", padx=(10, 0)
+        )
+
         vision_box = ttk.LabelFrame(frame, text="图形点选（按文字找图形 / 数美空间逻辑验证）", padding=8)
         vision_box.grid(row=8, column=0, columnspan=3, sticky="ew", pady=(10, 4))
         vision_box.columnconfigure(1, weight=1)
@@ -1415,6 +1480,13 @@ class App:
             engine.start()
             engine_name = getattr(engine, "engine_name", None) or getattr(engine, "name", "unknown")
             self.ui_queue.put(("engine", str(engine_name)))
+            locked = int(getattr(self, "locked_hwnd", 0) or 0)
+            if locked:
+                if engine.lock_window(locked):
+                    self._emit_log("info", "使用手动锁定的浏览器窗口（hwnd=%d）。" % locked)
+                else:
+                    self._emit_log("warn", "锁定的浏览器窗口已失效（浏览器可能重启过），改为自动识别。")
+                    self.locked_hwnd = 0
             flow = YibanFlow(engine, cfg, self._emit_log, self._manual_gate, self._thread_status)
 
             preset_cfg = preset if isinstance(preset, dict) else {"items": [], "pick": "sequential"}
