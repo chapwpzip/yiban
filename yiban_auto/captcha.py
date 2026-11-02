@@ -758,11 +758,30 @@ class CaptchaSolver:
             pass
         return b"", rect
 
+    _CLICK_PROBE_JS = (
+        "(function(){if(window.__ybClickProbe){return window.__ybClicks||0;}"
+        "window.__ybClicks=0;window.__ybClickProbe=1;"
+        "document.addEventListener('mousedown',function(){window.__ybClicks++;},true);"
+        "return 0;})()"
+    )
+
+    def _click_count(self, engine) -> int:
+        try:
+            return int(engine.eval(self._CLICK_PROBE_JS) or 0)
+        except Exception:
+            return -1
+
     def _click_point(self, engine, x: float, y: float) -> None:
-        """优先用系统真实鼠标；不可用（窗口不在前台/找不到窗口）时退回浏览器事件。"""
+        """点一下指定坐标，并**确认页面真的收到了这次点击**。
+
+        只判断“系统鼠标是否点出去了”不够：窗口找错、被弹窗盖住、缩放不对时
+        点击会落到别的地方。这里在页面里埋一个 mousedown 计数器，点完核对计数，
+        没涨就立刻改用浏览器事件点击（CDP），保证这一点一定落到页面上。
+        """
         if self.click_mode == "browser":
             engine.click_at(x, y)
             return
+        before = self._click_count(engine)
         ok = False
         try:
             ok = bool(engine.click_at_system(x, y))
@@ -772,10 +791,20 @@ class CaptchaSolver:
             if not self._sysmouse_noted:
                 self._sysmouse_noted = True
                 self._emit("info", "已切换为系统级真实鼠标点击（请保持浏览器在前台）。")
-            return
-        if self.click_mode == "system":
+            if before < 0:
+                return
+            for _ in range(6):  # 最多等 0.6 秒
+                time.sleep(0.1)
+                if self._click_count(engine) > before:
+                    return
+            self._emit("warn", "系统鼠标已点击，但页面没收到（窗口/缩放可能对不上），改用浏览器事件点击。")
+        elif self.click_mode == "system":
             self._emit("warn", "系统鼠标点击不可用（浏览器不在前台或窗口未找到），本次退回浏览器事件点击。")
         engine.click_at(x, y)
+        if before >= 0:
+            time.sleep(0.15)
+            if self._click_count(engine) <= before:
+                self._emit("warn", "浏览器事件点击后页面仍未收到点击，继续尝试其它方式。")
 
     def _capture_captcha_rgb(self, engine):
         """整屏截图后按元素矩形裁剪，返回 (w, h, rgb, path)。
