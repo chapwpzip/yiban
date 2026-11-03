@@ -265,7 +265,7 @@ def _generate_llm(topic: str, llm: Dict[str, Any]) -> GeneratedPost:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "YibanAutoPoster/1.1.9",
+            "User-Agent": "YibanAutoPoster/1.2.0",
         },
     )
     timeout = int(llm.get("timeout_seconds") or 90)
@@ -341,6 +341,115 @@ def _generate_preset(preset: Optional[Dict[str, Any]], index: int = 0) -> Genera
         body_text = body_text[:10000]
     return GeneratedPost(title, body_text, "preset", "手动预置",
                          {"index": position, "total": len(cleaned), "pick": pick})
+
+
+def _strip_preset_marker(line: str) -> str:
+    """去掉「【1】」「1.」「- 」这类序号前缀。"""
+    text = line.strip()
+    text = re.sub(r"^[【\[]\s*\d+\s*[】\]]\s*", "", text)
+    text = re.sub(r"^\d+\s*[.、)）]\s*", "", text)
+    text = re.sub(r"^[-*·]\s+", "", text)
+    return text.strip()
+
+
+_PRESET_SKIP_PREFIXES = ("易班微社区自动发帖工具", "导入方法", "格式：", "====", "----")
+
+
+def parse_preset_text(text: str) -> List[Dict[str, str]]:
+    """把「空行分隔、首行标题」的纯文本解析成预置内容列表。"""
+    blocks: List[str] = []
+    buffer: List[str] = []
+    for raw in (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = raw.rstrip()
+        if not line.strip():
+            if buffer:
+                blocks.append("\n".join(buffer).strip())
+                buffer = []
+            continue
+        if not buffer and line.strip().startswith(_PRESET_SKIP_PREFIXES):
+            continue
+        buffer.append(line)
+    if buffer:
+        blocks.append("\n".join(buffer).strip())
+
+    items: List[Dict[str, str]] = []
+    for block in blocks:
+        lines = [ln for ln in block.split("\n") if ln.strip()]
+        if not lines:
+            continue
+        first = _strip_preset_marker(lines[0])
+        rest = "\n".join(lines[1:]).strip()
+        # 首行短、且没有句末标点 → 当标题；否则整段都算正文，标题自动截取
+        if rest and len(first) <= 30 and not re.search(r"[。！？；…]$", first):
+            title, body = first, rest
+        else:
+            title, body = "", _strip_preset_marker(block)
+        body = re.sub(r"\n{3,}", "\n\n", body).strip()
+        if not body:
+            continue
+        items.append({"title": title, "body": body})
+    return items
+
+
+def load_preset_file(path: str) -> List[Dict[str, str]]:
+    """读取预置内容文件：支持 .json（含 items 数组或直接是数组）与 .txt。"""
+    from .util import read_text_file  # 延迟导入，避免循环依赖
+
+    text = read_text_file(path)
+    lowered = str(path).lower()
+    if lowered.endswith(".json") or text.lstrip()[:1] in "{[":
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ContentError("JSON 解析失败：" + str(exc)) from exc
+        raw_items = data.get("items") if isinstance(data, dict) else data
+        if not isinstance(raw_items, list):
+            raise ContentError("JSON 里没有找到 items 列表。")
+        items: List[Dict[str, str]] = []
+        for entry in raw_items:
+            if not isinstance(entry, dict):
+                continue
+            title = normalize_space(str(entry.get("title") or ""))
+            body = str(entry.get("body") or "").strip()
+            if body:
+                items.append({"title": title, "body": body})
+        if not items:
+            raise ContentError("这个 JSON 里没有可用的正文。")
+        return items
+
+    items = parse_preset_text(text)
+    if not items:
+        raise ContentError("没有解析到任何内容：请用空行分隔每条，第一条为标题。")
+    return items
+
+
+def preset_to_text(items: List[Dict[str, Any]]) -> str:
+    lines: List[str] = []
+    for index, item in enumerate(items, 1):
+        title = normalize_space(str((item or {}).get("title") or ""))
+        body = str((item or {}).get("body") or "").strip()
+        if not body:
+            continue
+        lines.append("【%d】%s" % (index, title or body.splitlines()[0][:16]))
+        lines.append(body)
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def save_preset_file(items: List[Dict[str, Any]], path: str) -> int:
+    """导出预置内容：.json 存结构化数据，.txt 存可读可编辑文本。"""
+    from .util import write_text_file
+
+    payload = [
+        {"title": normalize_space(str((it or {}).get("title") or "")), "body": str((it or {}).get("body") or "").strip()}
+        for it in items
+        if str((it or {}).get("body") or "").strip()
+    ]
+    if str(path).lower().endswith(".json"):
+        write_text_file(path, json.dumps({"version": 1, "items": payload}, ensure_ascii=False, indent=2))
+    else:
+        write_text_file(path, preset_to_text(payload))
+    return len(payload)
 
 
 def generate_post(

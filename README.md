@@ -7,7 +7,8 @@ Windows 桌面工具：输入本人易班账号，自动登录 → 自动生成�
 
 ## 功能
 
-- **三种内容生成方式**：模板化（日常寒暄 / 生活随感 / 古诗词 / 随机字母数字）、OpenAI 兼容 LLM、手动预置文案（按顺序或随机取用）
+- **三种内容生成方式**：模板化（日常寒暄 / 生活随感 / 古诗词 / 随机字母数字）、OpenAI 兼容 LLM、手动预置文案（按顺序或随机取用；编辑器支持**导入 / 导出** `.txt` / `.json`）
+- **自带预置文案包**：`presets/` 下有 60 条精选 + **2000 条正能量文案**（10 个题材各 200 条），一键导入
 - **自动登录**：先打开发帖页，未登录自动填表并提交；支持传统表单与 SPA 两种登录页
 - **自动发帖**：标题、摘要、wangEditor 正文、微社区 / 版块下拉、草稿恢复弹窗、封面“无图”全部自动处理
 - **结果检测**：成功提示 / 页面跳转 / 发帖接口三路证据；失败输出服务端错误码（如频率限制 `-1002`）
@@ -33,6 +34,22 @@ Windows 桌面工具：输入本人易班账号，自动登录 → 自动生成�
 3. 填账号密码 → 选生成方式 → 点“生成预览”（可改）→ 点“开始发帖”
 
 首次运行若出现 SmartScreen，点「更多信息 → 仍要运行」（未签名单文件程序的正常提示）。
+
+## 预置文案
+
+「2. 内容生成」→ 生成模式选 **手动预置内容** → 点「预置内容…」：
+
+- 左下角「导入…」读 `.txt` / `.json`，会问「追加还是替换」；「导出…」把当前列表存成文件
+- 右边的「按顺序 / 随机」决定发帖时怎么取用
+
+软件 `presets/` 目录里自带两套：
+
+| 文件 | 条数 | 说明 |
+|---|---|---|
+| `正能量预置内容.txt` / `.json` | 60 | 精选，8 个题材 |
+| `正能量预置内容2000.txt` / `.json` | 2000 | 10 个题材各 200 条，正文 23～120 字，标题正文均不重复 |
+
+txt 格式：每条之间空一行，第一行是标题，其余是正文，`【1】` 这类序号会自动忽略。
 
 ## 从源码运行
 
@@ -61,6 +78,7 @@ build.bat
 pyinstaller --noconfirm --clean --onefile --windowed --name YibanAutoPoster ^
   --icon assets\yiban.ico --add-data "assets;assets" ^
   --add-data "drivers\msedgedriver.exe;drivers" ^
+  --add-data "presets;presets" ^
   --collect-submodules selenium --hidden-import websocket ^
   --hidden-import websocket._core main.py
 ```
@@ -82,6 +100,10 @@ yiban_auto/
     cdp.py              直接驱动本机 Edge/Chrome（DevTools 协议，无需 WebDriver）
     selenium_engine.py  Selenium 路线
     __init__.py         auto：Selenium 失败自动回落 CDP
+presets/                自带预置文案（60 条精选 + 2000 条）
+make_presets.py         生成 60 条精选包
+make_presets_2000.py    生成 2000 条包（改句子池重跑即可换题材 / 加量）
+make_preset_docx.py     把预置包导成可阅读的 docx 合集
 ```
 
 浏览器默认用 CDP 直接驱动本机 Edge，不下载 WebDriver，也不会留下 `navigator.webdriver`。

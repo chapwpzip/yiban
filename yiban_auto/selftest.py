@@ -97,6 +97,30 @@ def run_selftest(full: bool = True, headless: bool = True) -> Tuple[bool, str, P
         details.append(traceback.format_exc())
 
     try:
+        from .content import load_preset_file, save_preset_file
+
+        pack = app_dir() / "presets" / "正能量预置内容.txt"
+        if not pack.exists():
+            pack = resource_path("presets/正能量预置内容.txt")
+        items = load_preset_file(str(pack))
+        tmp_export = Path(tempfile.gettempdir()) / "yiban-selftest-presets.txt"
+        save_preset_file(items, str(tmp_export))
+        back = load_preset_file(str(tmp_export))
+        ok = len(items) >= 10 and len(back) == len(items)
+        _record(
+            checks, "预置内容导入",
+            ok,
+            pack.name + "：" + str(len(items)) + " 条，导出再导入 " + str(len(back)) + " 条",
+        )
+        try:
+            tmp_export.unlink()
+        except OSError:
+            pass
+    except Exception as exc:
+        _record(checks, "预置内容导入", False, repr(exc))
+        details.append(traceback.format_exc())
+
+    try:
         from .captcha_cv import analyze, decode_png, match_points, parse_instruction
 
         sample = resource_path("assets/captcha-sample.png")

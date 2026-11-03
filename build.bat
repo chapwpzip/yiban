@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"
@@ -31,6 +31,7 @@ echo [3/4] 使用 PyInstaller 打包...
     --icon "assets\yiban.ico" ^
     --add-data "assets;assets" ^
     --add-data "drivers\msedgedriver.exe;drivers" ^
+    --add-data "presets;presets" ^
     --collect-submodules selenium ^
     --hidden-import websocket ^
     --hidden-import websocket._core ^
@@ -45,6 +46,7 @@ echo [4/4] 复制配置与说明...
 if not exist "dist" mkdir "dist"
 copy /Y "settings.json" "dist\settings.json" >nul
 copy /Y "README.txt" "dist\README.txt" >nul
+if exist "presets" xcopy /E /I /Y "presets" "dist\presets" >nul
 
 echo.
 echo 打包完成：

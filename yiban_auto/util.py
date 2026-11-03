@@ -97,6 +97,23 @@ def write_json_atomic(path: Path, data) -> None:
             pass
 
 
+def read_text_file(path) -> str:
+    """读文本，自动兼容 UTF-8 / UTF-8 BOM / GBK（Word、记事本常见的几种编码）。"""
+    raw = Path(path).read_bytes()
+    for encoding in ("utf-8-sig", "utf-8", "gb18030"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="replace")
+
+
+def write_text_file(path, text: str) -> None:
+    path = Path(path)
+    ensure_dir(path.parent)
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def mask_secret(value: str, keep: int = 4) -> str:
     value = value or ""
     if not value:

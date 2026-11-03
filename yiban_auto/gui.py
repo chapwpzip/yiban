@@ -29,9 +29,10 @@ from .config import (
 from . import secure_store
 from . import sysmouse
 from .captcha import CaptchaSolver
-from .content import ContentError, generate_post, validate_post
+from .content import ContentError, generate_post, load_preset_file, save_preset_file, validate_post
 from .flow import IMAGE_CAPTCHA_SELECTOR, SHUMEI_POPUP_SELECTOR, YibanFlow
 from .util import (
+    app_dir,
     data_dir,
     log_dir,
     now_text,
@@ -665,22 +666,26 @@ class App:
         win = tk.Toplevel(self.root)
         win.title("预置内容（每条一个标题 + 一篇正文）")
         win.transient(self.root)
-        win.geometry("880x520")
+        win.geometry("940x600")
+        win.minsize(760, 480)
         items = [dict(item) for item in self.preset_items]
         state = {"index": -1}
 
         left = ttk.Frame(win, padding=(10, 10, 6, 10))
         left.pack(side="left", fill="y")
         ttk.Label(left, text="内容列表").pack(anchor="w")
+        # 先把底部两排按钮 pack 进底部，再让列表占剩余空间——否则窗口一矮按钮就被挤没
+        io_btns = ttk.Frame(left)
+        io_btns.pack(side="bottom", fill="x", pady=(4, 0))
+        btns = ttk.Frame(left)
+        btns.pack(side="bottom", fill="x")
         list_wrap = ttk.Frame(left)
         list_wrap.pack(fill="both", expand=True, pady=(4, 6))
-        lb = tk.Listbox(list_wrap, width=30, height=18, exportselection=False)
+        lb = tk.Listbox(list_wrap, width=30, height=14, exportselection=False)
         scroll = ttk.Scrollbar(list_wrap, orient="vertical", command=lb.yview)
         lb.configure(yscrollcommand=scroll.set)
         lb.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
-        btns = ttk.Frame(left)
-        btns.pack(fill="x")
 
         right = ttk.Frame(win, padding=(6, 10, 10, 10))
         right.pack(side="left", fill="both", expand=True)
@@ -794,6 +799,78 @@ class App:
         ttk.Button(btns, text="删除", width=6, command=remove_item).pack(side="left", padx=(0, 4))
         ttk.Button(btns, text="上移", width=6, command=lambda: move_item(-1)).pack(side="left", padx=(0, 4))
         ttk.Button(btns, text="下移", width=6, command=lambda: move_item(1)).pack(side="left")
+
+        def preset_dir() -> str:
+            """默认打开 exe 同目录的 presets 文件夹；没有就用打包内置的那份。"""
+            for candidate in (app_dir() / "presets", resource_path("presets"), data_dir() / "presets"):
+                try:
+                    if candidate.is_dir():
+                        return str(candidate)
+                except OSError:
+                    continue
+            return str(app_dir())
+
+        def import_file() -> None:
+            commit()
+            path = filedialog.askopenfilename(
+                parent=win,
+                title="导入预置内容（.json / .txt）",
+                initialdir=preset_dir(),
+                filetypes=[
+                    ("预置内容", "*.json *.txt"),
+                    ("JSON 文件", "*.json"),
+                    ("文本文件", "*.txt"),
+                    ("所有文件", "*.*"),
+                ],
+            )
+            if not path:
+                return
+            try:
+                loaded = load_preset_file(path)
+            except ContentError as exc:
+                messagebox.showwarning("导入失败", str(exc), parent=win)
+                return
+            except OSError as exc:
+                messagebox.showwarning("读取失败", str(exc), parent=win)
+                return
+            append = messagebox.askyesno(
+                "导入方式",
+                "共读到 %d 条预置内容。\n\n是：追加到现有 %d 条后面\n否：清空并替换现有内容"
+                % (len(loaded), len(items)),
+                parent=win,
+            )
+            if append:
+                items.extend(loaded)
+                refresh(len(items) - len(loaded))
+            else:
+                items[:] = loaded
+                refresh(0)
+            self._emit_log("info", "已导入 %d 条预置内容：%s" % (len(loaded), path))
+
+        def export_file() -> None:
+            commit()
+            if not items:
+                messagebox.showinfo("没有内容", "当前没有任何预置内容。", parent=win)
+                return
+            path = filedialog.asksaveasfilename(
+                parent=win,
+                title="导出预置内容",
+                initialdir=preset_dir(),
+                defaultextension=".json",
+                initialfile="预置内容.json",
+                filetypes=[("JSON 文件", "*.json"), ("文本文件", "*.txt")],
+            )
+            if not path:
+                return
+            try:
+                count = save_preset_file(items, path)
+            except OSError as exc:
+                messagebox.showwarning("导出失败", str(exc), parent=win)
+                return
+            messagebox.showinfo("已导出", "已导出 %d 条到：\n%s" % (count, path), parent=win)
+
+        ttk.Button(io_btns, text="导入…", width=8, command=import_file).pack(side="left", padx=(0, 4))
+        ttk.Button(io_btns, text="导出…", width=8, command=export_file).pack(side="left")
 
         lb.bind("<<ListboxSelect>>", on_select)
         ttk.Button(actions, text="保存", command=save_preset).pack(side="left", padx=4)
