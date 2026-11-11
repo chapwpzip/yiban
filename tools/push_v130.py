@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""把本地工作区同步到 GitHub（chapwpzip/yiban-autoposter），并更新仓库描述、topics、发布 Release。
+"""把本地工作区同步到 GitHub（chapwpzip/yiban），并更新仓库描述、topics、发布 Release。
 
 用法：
     python tools/push_v130.py --token ghp_xxx [--dry-run]
@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 
 OWNER = "chapwpzip"
-REPO = "yiban-autoposter"
+REPO = "yiban"
 BRANCH = "main"
 API = "https://api.github.com"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,7 +33,7 @@ DESCRIPTION = (
     "自动登录、自动生成内容、自动发帖并检测结果，帮助每日稳定积累易班网薪（活跃/积分）。"
     "关键词：易班 yiban 网薪 wangxin 刷网薪 每日任务 微社区 weishequ 自动发帖 发帖工具 发帖机 yiban.cn"
 )
-HOMEPAGE = "https://github.com/chapwpzip/yiban-autoposter/releases"
+HOMEPAGE = "https://github.com/chapwpzip/yiban/releases"
 TOPICS = [
     "yiban", "yiban-autoposter", "yiban-community", "yiban-wangxin", "wangxin",
     "weishequ", "e-class", "daily-task", "auto-post", "poster", "selenium", "cdp",
@@ -205,9 +205,9 @@ def main():
         "### 使用方法\n"
         "解压到普通目录 → 双击 `YibanAutoPoster.exe` → 填本人易班账号 → 点「开始发帖」。\n\n"
         "### 界面预览\n"
-        "![主界面](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-main.png)\n\n"
-        "![预置内容编辑器](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-presets.png)\n\n"
-        "![验证码设置](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-captcha.png)\n"
+        "![主界面](https://raw.githubusercontent.com/chapwpzip/yiban/main/docs/screenshot-main.png)\n\n"
+        "![预置内容编辑器](https://raw.githubusercontent.com/chapwpzip/yiban/main/docs/screenshot-presets.png)\n\n"
+        "![验证码设置](https://raw.githubusercontent.com/chapwpzip/yiban/main/docs/screenshot-captcha.png)\n"
     )
     try:
         _, existing = request("GET", f"{API}/repos/{OWNER}/{REPO}/releases/tags/{TAG}", token)
