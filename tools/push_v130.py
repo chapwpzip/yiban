@@ -74,7 +74,6 @@ FILES = [
     "docs/screenshot-main.png",
     "docs/screenshot-presets.png",
     "docs/screenshot-captcha.png",
-    "docs/screenshot-v1.3.0.png",
     "presets/正能量预置内容.txt",
     "presets/正能量预置内容.json",
     "presets/正能量预置内容2000.txt",
