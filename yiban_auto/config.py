@@ -23,7 +23,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     },
     "posting": {
         "interval_seconds": 30,        # 两次发帖之间的间隔，允许 10-86400
-        "repeat_count": 1,             # 单次运行最多连续发几篇，1-100
+        "repeat_count": 1,             # 单次运行最多连续发几篇，1-999
         "retry_count": 2,              # 单篇失败后的自动重试次数，0-10
         "retry_interval_seconds": 20,  # 每次重试前的等待秒数，5-600
         "regenerate_on_retry": True,   # 重试时是否换一版内容（避免“相同标题”）
@@ -168,7 +168,7 @@ def normalize_settings(raw: Dict[str, Any]) -> Dict[str, Any]:
     posting = cfg["posting"]
     # 安全约束：两篇之间至少间隔 10 秒，避免高频请求被平台风控。
     posting["interval_seconds"] = _as_int(posting.get("interval_seconds"), 30, 10, 86400)
-    posting["repeat_count"] = _as_int(posting.get("repeat_count"), 1, 1, 100)
+    posting["repeat_count"] = _as_int(posting.get("repeat_count"), 1, 1, 999)
     posting["retry_count"] = _as_int(posting.get("retry_count"), 2, 0, 10)
     posting["retry_interval_seconds"] = _as_int(posting.get("retry_interval_seconds"), 20, 5, 600)
     posting["regenerate_on_retry"] = bool(posting.get("regenerate_on_retry", True))

@@ -123,6 +123,7 @@ class CaptchaSolver:
         if self.click_mode not in ("system", "browser", "auto"):
             self.click_mode = "system"
         self._sysmouse_noted = False
+        self._click_rejected = 0
         self.auto_slider = bool(self.cfg.get("auto_slider", True))
         self.auto_ocr = bool(self.cfg.get("auto_ocr", True))
         vision = self.cfg.get("vision") if isinstance(self.cfg.get("vision"), dict) else {}
@@ -771,40 +772,90 @@ class CaptchaSolver:
         except Exception:
             return -1
 
-    def _click_point(self, engine, x: float, y: float) -> None:
-        """点一下指定坐标，并**确认页面真的收到了这次点击**。
+    _IMG_STATE_JS = (
+        "(function(){var e=document.querySelector('.shumei_captcha_loaded_img_bg');"
+        "if(!e)return '';return (e.currentSrc||e.src||'')+'|'+e.naturalWidth+'x'+e.naturalHeight;})()"
+    )
 
-        只判断“系统鼠标是否点出去了”不够：窗口找错、被弹窗盖住、缩放不对时
-        点击会落到别的地方。这里在页面里埋一个 mousedown 计数器，点完核对计数，
-        没涨就立刻改用浏览器事件点击（CDP），保证这一点一定落到页面上。
-        """
-        if self.click_mode == "browser":
-            engine.click_at(x, y)
-            return
-        before = self._click_count(engine)
-        ok = False
+    def _image_state(self, engine) -> str:
+        """验证码图片的「指纹」：换图后 src 会变，用来判断点击到底有没有被受理。"""
         try:
-            ok = bool(engine.click_at_system(x, y))
+            return str(engine.eval(self._IMG_STATE_JS) or "")
         except Exception:
-            ok = False
-        if ok:
-            if not self._sysmouse_noted:
-                self._sysmouse_noted = True
-                self._emit("info", "已切换为系统级真实鼠标点击（请保持浏览器在前台）。")
-            if before < 0:
-                return
-            for _ in range(6):  # 最多等 0.6 秒
-                time.sleep(0.1)
-                if self._click_count(engine) > before:
-                    return
-            self._emit("warn", "系统鼠标已点击，但页面没收到（窗口/缩放可能对不上），改用浏览器事件点击。")
-        elif self.click_mode == "system":
-            self._emit("warn", "系统鼠标点击不可用（浏览器不在前台或窗口未找到），本次退回浏览器事件点击。")
-        engine.click_at(x, y)
-        if before >= 0:
+            return ""
+
+    def _click_effect(self, engine, popup_selector: str, before: str, wait: float = 2.6) -> bool:
+        """点完之后看结果：弹层消失，或验证码换了图（说明点被受理、只是答案不对）。"""
+        end = time.time() + max(0.5, wait)
+        while time.time() < end:
+            engine.check_stop()
+            try:
+                if not engine.exists(popup_selector, visible=True):
+                    return True
+            except Exception:
+                pass
+            if before:
+                now = self._image_state(engine)
+                if now and now != before:
+                    return True
             time.sleep(0.15)
-            if self._click_count(engine) <= before:
-                self._emit("warn", "浏览器事件点击后页面仍未收到点击，继续尝试其它方式。")
+        return False
+
+    def _click_point(self, engine, x: float, y: float, popup_selector: str = "") -> bool:
+        """点一次坐标，并确认「页面确实受理了这次点击」。
+
+        风控控件只认可信事件（isTrusted），单纯 `element.click()` 会被忽略，表现为
+        「点了没反应、图也不换」。所以按 系统鼠标 → 浏览器输入(CDP/Actions) → DOM 事件链
+        依次尝试，每种方式点完都看效果；全部无效才判失败，交给上层重试或转人工。
+        """
+        before = self._image_state(engine) if popup_selector else ""
+
+        def accepted(tag: str) -> bool:
+            if not popup_selector:
+                return True
+            if self._click_effect(engine, popup_selector, before):
+                self._click_rejected = 0
+                return True
+            self._emit("warn", tag + "点击已发出，但验证码没有反应（图没换、框没消失）。")
+            return False
+
+        if self.click_mode in ("system", "auto"):
+            ok = False
+            try:
+                engine.bring_to_front()
+            except Exception:
+                pass
+            try:
+                ok = bool(engine.click_at_system(x, y))
+            except Exception as exc:
+                self._emit("info", "系统鼠标点击异常：" + str(exc)[:80])
+            if ok:
+                if not self._sysmouse_noted:
+                    self._sysmouse_noted = True
+                    self._emit("info", "已使用系统级真实鼠标点击（浏览器需在前台）。")
+                if accepted("系统鼠标"):
+                    return True
+            elif self.click_mode == "system":
+                self._emit("warn", "系统鼠标不可用（浏览器不在前台或窗口没找到），改用浏览器输入点击。")
+
+        try:
+            engine.click_at(x, y)
+        except Exception as exc:
+            self._emit("info", "浏览器输入点击失败：" + str(exc)[:80])
+        else:
+            if accepted("浏览器输入"):
+                return True
+
+        try:
+            target = engine.click_at_dom(x, y)
+        except Exception:
+            target = ""
+        if target:
+            self._emit("info", "改用 DOM 事件链点击：" + target)
+        if accepted("DOM 事件"):
+            return True
+        self._click_rejected += 1
+        return False
 
     def _capture_captcha_rgb(self, engine):
         """整屏截图后按元素矩形裁剪，返回 (w, h, rgb, path)。
@@ -928,11 +979,15 @@ class CaptchaSolver:
             "离线识图命中 " + str(len(points)) + " 个目标，开始点击（标注图 " + marked_path + "）。",
         )
         try:
-            for nx, ny in points:
+            for index, (nx, ny) in enumerate(points):
                 x = rect.get("x", 0) + nx * rect.get("w", 0)
                 y = rect.get("y", 0) + ny * rect.get("h", 0)
                 self._emit("info", "点击坐标 (" + str(round(x, 1)) + ", " + str(round(y, 1)) + ")")
-                self._click_point(engine, x, y)
+                # 只有单点题才逐点校验「是否被受理」；多点题要连点完才出结果。
+                ok = self._click_point(engine, x, y, popup_selector if len(points) == 1 else "")
+                if len(points) == 1 and not ok:
+                    self._emit("warn", "离线识图的点击没有被验证码受理，换一种点击方式重试。")
+                    return False
                 time.sleep(0.4)
         except StopRequested:
             raise
@@ -978,7 +1033,15 @@ class CaptchaSolver:
         self._emit("info", "视觉模型给出 " + str(len(points)) + " 个点击点，开始点击。")
         try:
             for nx, ny in points:
-                self._click_point(engine, rect["x"] + nx * rect["w"], rect["y"] + ny * rect["h"])
+                ok = self._click_point(
+                    engine,
+                    rect["x"] + nx * rect["w"],
+                    rect["y"] + ny * rect["h"],
+                    popup_selector if len(points) == 1 else "",
+                )
+                if len(points) == 1 and not ok:
+                    self._emit("warn", "视觉坐标的点击没有被验证码受理。")
+                    return False
                 time.sleep(0.45)
         except StopRequested:
             raise
@@ -1081,8 +1144,21 @@ class CaptchaSolver:
             if solved or self._popup_gone(engine, popup_selector, self.settle):
                 self._emit("success", "自动验证通过。")
                 return True
+            if self._click_rejected >= 2:
+                self._emit(
+                    "warn",
+                    "验证码连续 " + str(self._click_rejected) + " 次「点了没反应」："
+                    "浏览器窗口可能被遮挡或不在前台，自动尝试先停下，转人工处理。",
+                )
+                return False
             if index < total:
-                self._emit("info", "自动验证未通过，" + str(int(self.retry_interval)) + " 秒后重试。")
+                # 答案错 / 点击没落地时，原地重试没有意义，先换一张图。
+                try:
+                    if self._refresh_captcha(engine):
+                        time.sleep(0.8)
+                except Exception:
+                    pass
+                self._emit("info", "自动验证未通过，" + str(int(self.retry_interval)) + " 秒后换图重试。")
                 time.sleep(self.retry_interval)
         self._emit("warn", "自动验证未通过，已尝试 " + str(total) + " 次。")
         return False

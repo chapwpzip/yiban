@@ -26,6 +26,7 @@ from .config import (
     resolve_settings_path,
     save_settings,
 )
+from . import efui
 from . import secure_store
 from . import sysmouse
 from .captcha import CaptchaSolver
@@ -191,31 +192,136 @@ class App:
 
     # ----------------------------------------------------------------- style
     def _build_style(self) -> None:
+        efui.register_fonts()
         style = ttk.Style(self.root)
         try:
-            style.theme_use("vista")
+            style.theme_use("clam")
         except tk.TclError:
-            try:
-                style.theme_use("clam")
-            except tk.TclError:
-                pass
+            pass
+        self.root.configure(bg=efui.PAPER)
         try:
-            self.root.option_add("*Font", ("Microsoft YaHei UI", 10))
+            self.root.option_add("*Font", efui.ui(10))
+            self.root.option_add("*TCombobox*Listbox.font", efui.ui(10))
+            self.root.option_add("*TCombobox*Listbox.background", efui.PANEL)
+            self.root.option_add("*TCombobox*Listbox.foreground", efui.INK)
+            self.root.option_add("*TCombobox*Listbox.selectBackground", efui.SIGNAL)
+            self.root.option_add("*TCombobox*Listbox.selectForeground", efui.ON_SIGNAL)
         except Exception:
             pass
-        style.configure("Title.TLabel", font=("Microsoft YaHei UI", 18, "bold"), foreground="#17324d")
-        style.configure("Muted.TLabel", foreground="#5b6b7b", font=("Microsoft YaHei UI", 9))
-        style.configure("Hint.TLabel", foreground="#7a8794", font=("Microsoft YaHei UI", 9))
-        style.configure("Status.TLabel", foreground="#1f4e79", font=("Microsoft YaHei UI", 9, "bold"))
-        style.configure("TLabelframe.Label", font=("Microsoft YaHei UI", 10, "bold"))
-        style.configure("TButton", padding=(10, 5))
-        style.configure("Accent.TButton", font=("Microsoft YaHei UI", 10, "bold"))
+
+        style.configure(".", font=efui.ui(9), background=efui.PAPER, foreground=efui.INK)
+        style.configure("TFrame", background=efui.PANEL)
+        style.configure("TLabel", background=efui.PANEL, foreground=efui.INK, font=efui.ui(9))
+        style.configure("Field.TLabel", background=efui.PANEL, foreground=efui.INK, font=efui.ui(9))
+        style.configure("Hint.TLabel", background=efui.PANEL, foreground=efui.INK2, font=efui.ui(8))
+        style.configure(
+            "TEntry",
+            fieldbackground=efui.PANEL,
+            foreground=efui.INK,
+            insertcolor=efui.INK,
+            bordercolor=efui.RULE,
+            lightcolor=efui.RULE,
+            darkcolor=efui.RULE,
+            borderwidth=1,
+            relief="flat",
+            padding=5,
+        )
+        style.map(
+            "TEntry",
+            bordercolor=[("focus", efui.INK)],
+            lightcolor=[("focus", efui.INK)],
+            darkcolor=[("focus", efui.INK)],
+            fieldbackground=[("disabled", efui.CHIP)],
+            foreground=[("disabled", "#9B9B96")],
+        )
+        style.configure(
+            "TCombobox",
+            fieldbackground=efui.PANEL,
+            background=efui.CHIP,
+            foreground=efui.INK,
+            arrowcolor=efui.INK,
+            bordercolor=efui.RULE,
+            lightcolor=efui.RULE,
+            darkcolor=efui.RULE,
+            borderwidth=1,
+            relief="flat",
+            padding=4,
+            arrowsize=12,
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", efui.PANEL), ("disabled", efui.CHIP)],
+            foreground=[("readonly", efui.INK), ("disabled", "#9B9B96")],
+            background=[("active", efui.CHIP)],
+            bordercolor=[("focus", efui.INK)],
+            arrowcolor=[("disabled", "#9B9B96")],
+        )
+        style.configure(
+            "TSpinbox",
+            fieldbackground=efui.PANEL,
+            background=efui.CHIP,
+            foreground=efui.INK,
+            arrowcolor=efui.INK,
+            bordercolor=efui.RULE,
+            lightcolor=efui.RULE,
+            darkcolor=efui.RULE,
+            borderwidth=1,
+            relief="flat",
+            padding=4,
+            arrowsize=11,
+        )
+        style.map("TSpinbox", bordercolor=[("focus", efui.INK)], fieldbackground=[("disabled", efui.CHIP)])
+        style.configure("TCheckbutton", background=efui.PANEL, foreground=efui.INK, font=efui.ui(9), focuscolor=efui.PANEL)
+        style.map(
+            "TCheckbutton",
+            background=[("active", efui.PANEL)],
+            indicatorcolor=[("selected", efui.INK), ("!selected", efui.PANEL)],
+        )
+        efui.install_check_style(style, self.root)
+        style.configure(
+            "Vertical.TScrollbar",
+            background=efui.CHIP,
+            troughcolor=efui.PAPER,
+            bordercolor=efui.PAPER,
+            arrowcolor=efui.INK2,
+            borderwidth=0,
+            relief="flat",
+            width=10,
+        )
+        style.map("Vertical.TScrollbar", background=[("active", "#CFCFCA")])
+        style.configure("TSeparator", background=efui.RULE)
+        style.configure(
+            "TButton",
+            background=efui.CHIP,
+            foreground=efui.INK,
+            font=efui.ui(9, "bold"),
+            borderwidth=0,
+            relief="flat",
+            padding=(12, 6),
+        )
+        style.map(
+            "TButton",
+            background=[("pressed", efui.SIGNAL), ("active", efui.SIGNAL), ("disabled", efui.CHIP)],
+            foreground=[("disabled", "#9B9B96")],
+        )
+        style.configure(
+            "TLabelframe",
+            background=efui.PANEL,
+            bordercolor=efui.RULE,
+            lightcolor=efui.RULE,
+            darkcolor=efui.RULE,
+            borderwidth=1,
+            relief="solid",
+        )
+        style.configure("TLabelframe.Label", background=efui.PANEL, foreground=efui.INK, font=efui.ui(9, "bold"))
+        style.configure("TRadiobutton", background=efui.PANEL, foreground=efui.INK, font=efui.ui(9))
+        style.map("TRadiobutton", background=[("active", efui.PANEL)])
 
     # -------------------------------------------------------------------- ui
     def _build_ui(self) -> None:
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(3, weight=3)
-        self.root.rowconfigure(4, weight=2)
+        self.root.rowconfigure(4, weight=3)
+        self.root.rowconfigure(5, weight=2)
 
         self._build_header()
         self._build_settings()
@@ -224,34 +330,102 @@ class App:
         self._build_log()
         self._build_bottom()
 
+    # ----------------------------------------------------------------- parts
+    def _label(self, parent, text: str, dim: bool = False, wrap: int = 0, bold: bool = False) -> tk.Label:
+        return tk.Label(
+            parent,
+            text=text,
+            bg=efui.PANEL,
+            fg=efui.INK2 if dim else efui.INK,
+            font=efui.ui(8 if dim else 9, "bold" if bold else "normal"),
+            anchor="w",
+            justify="left",
+            wraplength=wrap,
+        )
+
     def _build_header(self) -> None:
-        header = ttk.Frame(self.root, padding=(16, 12, 16, 2))
-        header.grid(row=0, column=0, sticky="ew")
-        header.columnconfigure(0, weight=1)
-        ttk.Label(header, text=__app_name__, style="Title.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Label(
-            header,
-            text="仅用于本人易班账号。验证码默认自动尝试（滑块轨迹 / 图片 OCR / 外接服务），失败后按配置重试并回退人工。",
-            style="Muted.TLabel",
-        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
-        ttk.Label(header, text=f"v{__version__}", style="Muted.TLabel").grid(row=0, column=1, rowspan=2, sticky="e")
+        strip = efui.TriStrip(self.root, height=3)
+        strip.grid(row=0, column=0, sticky="ew")
+
+        header = tk.Frame(self.root, bg=efui.BAR)
+        header.grid(row=1, column=0, sticky="ew")
+        header.columnconfigure(1, weight=1)
+
+        mark = tk.Frame(header, bg=efui.SIGNAL, width=5)
+        mark.grid(row=0, column=0, sticky="ns", padx=(16, 14), pady=9)
+
+        title_box = tk.Frame(header, bg=efui.BAR)
+        title_box.grid(row=0, column=1, sticky="w", pady=9)
+        tk.Label(
+            title_box,
+            text=efui.track("// AUTO POSTER"),
+            font=efui.wide(8, "bold"),
+            fg=efui.BAR_DIM,
+            bg=efui.BAR,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            title_box,
+            text=__app_name__,
+            font=efui.ui(17, "bold"),
+            fg=efui.BAR_TEXT,
+            bg=efui.BAR,
+            anchor="w",
+        ).grid(row=1, column=0, sticky="w", pady=(1, 0))
+        tk.Label(
+            title_box,
+            text="仅用于本人易班账号。验证码默认自动尝试，失败后按配置重试并回退人工。",
+            font=efui.ui(8),
+            fg=efui.BAR_DIM,
+            bg=efui.BAR,
+            anchor="w",
+        ).grid(row=2, column=0, sticky="w", pady=(3, 0))
+
+        meta = tk.Frame(header, bg=efui.BAR)
+        meta.grid(row=0, column=2, sticky="e", padx=16, pady=9)
+        tk.Label(
+            meta,
+            text=efui.track("BUILD"),
+            font=efui.wide(8, "bold"),
+            fg=efui.BAR_DIM,
+            bg=efui.BAR,
+            anchor="e",
+        ).grid(row=0, column=0, sticky="e")
+        tk.Label(
+            meta,
+            text=f"v{__version__}",
+            font=efui.mono(11, "bold"),
+            fg=efui.BAR_TEXT,
+            bg=efui.BAR,
+            anchor="e",
+        ).grid(row=1, column=0, sticky="e")
+        tk.Label(
+            meta,
+            text="易班微社区",
+            font=efui.ui(8),
+            fg=efui.BAR_DIM,
+            bg=efui.BAR,
+            anchor="e",
+        ).grid(row=2, column=0, sticky="e")
 
     def _build_settings(self) -> None:
-        wrap = ttk.Frame(self.root, padding=(16, 2, 16, 4))
-        wrap.grid(row=1, column=0, sticky="ew")
+        wrap = tk.Frame(self.root, bg=efui.PAPER)
+        wrap.grid(row=2, column=0, sticky="ew", padx=16, pady=(12, 4))
         for col in range(3):
             wrap.columnconfigure(col, weight=1, uniform="settings")
 
-        # 账号
-        account = ttk.LabelFrame(wrap, text="1. 账号", padding=10)
-        account.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        # 01 账号
+        account_panel = efui.Panel(wrap, "ACCOUNT", "账号", "01")
+        account_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        account = tk.Frame(account_panel.body, bg=efui.PANEL)
+        account.grid(row=0, column=0, sticky="nsew")
         account.columnconfigure(0, weight=1)
-        ttk.Label(account, text="易班账号（手机号 / 用户名）").grid(row=0, column=0, sticky="w")
+        self._label(account, "易班账号（手机号 / 用户名）").grid(row=0, column=0, sticky="w")
         self.account_entry = ttk.Entry(account, textvariable=self.account_var)
-        self.account_entry.grid(row=1, column=0, sticky="ew", pady=(2, 8))
-        ttk.Label(account, text="密码").grid(row=2, column=0, sticky="w")
+        self.account_entry.grid(row=1, column=0, sticky="ew", pady=(3, 8))
+        self._label(account, "密码").grid(row=2, column=0, sticky="w")
         self.password_entry = ttk.Entry(account, textvariable=self.password_var, show="*")
-        self.password_entry.grid(row=3, column=0, sticky="ew", pady=(2, 4))
+        self.password_entry.grid(row=3, column=0, sticky="ew", pady=(3, 6))
         self.show_password_check = ttk.Checkbutton(
             account, text="显示密码", variable=self.show_password_var, command=self._apply_password_state
         )
@@ -260,65 +434,66 @@ class App:
             account, text="记住账号密码（本机加密保存）", variable=self.remember_var
         )
         self.remember_check.grid(row=5, column=0, sticky="w", pady=(2, 0))
-        ttk.Label(
+        self._label(
             account,
-            text="默认只保存在内存。勾选后用 Windows DPAPI 加密写入本机，换用户/换机器无法解密。",
-            style="Hint.TLabel",
-            wraplength=300,
-        ).grid(row=6, column=0, sticky="w", pady=(6, 0))
+            "只保存在内存；勾选后用 DPAPI 加密写入本机，换机器无法解密。",
+            dim=True,
+            wrap=330,
+        ).grid(row=6, column=0, sticky="w", pady=(8, 0))
 
-        # 内容
-        content = ttk.LabelFrame(wrap, text="2. 内容生成", padding=10)
-        content.grid(row=0, column=1, sticky="nsew", padx=4)
+        # 02 内容生成
+        content_panel = efui.Panel(wrap, "CONTENT", "内容生成", "02")
+        content_panel.grid(row=0, column=1, sticky="nsew", padx=6)
+        content = tk.Frame(content_panel.body, bg=efui.PANEL)
+        content.grid(row=0, column=0, sticky="nsew")
         content.columnconfigure(1, weight=1)
-        ttk.Label(content, text="生成模式").grid(row=0, column=0, sticky="w", pady=2)
+
+        self._label(content, "生成模式").grid(row=0, column=0, sticky="w", pady=1, padx=(0, 8))
         self.mode_combo = ttk.Combobox(
             content, textvariable=self.mode_var, values=list(MODE_LABELS.values()), state="readonly", width=14
         )
-        self.mode_combo.grid(row=0, column=1, sticky="ew", pady=2)
+        self.mode_combo.grid(row=0, column=1, sticky="ew", pady=1)
         self.mode_combo.bind("<<ComboboxSelected>>", lambda event: self._apply_mode_state())
 
-        ttk.Label(content, text="模板分类").grid(row=1, column=0, sticky="w", pady=2)
+        self._label(content, "模板分类").grid(row=1, column=0, sticky="w", pady=1, padx=(0, 8))
         self.category_combo = ttk.Combobox(
             content, textvariable=self.category_var, values=list(TEMPLATE_CATEGORIES), state="readonly", width=14
         )
-        self.category_combo.grid(row=1, column=1, sticky="ew", pady=2)
+        self.category_combo.grid(row=1, column=1, sticky="ew", pady=1)
 
-        ttk.Label(content, text="话题 / 关键词").grid(row=2, column=0, sticky="w", pady=2)
+        self._label(content, "话题 / 关键词").grid(row=2, column=0, sticky="w", pady=1, padx=(0, 8))
         self.topic_entry = ttk.Entry(content, textvariable=self.topic_var)
-        self.topic_entry.grid(row=2, column=1, sticky="ew", pady=2)
+        self.topic_entry.grid(row=2, column=1, sticky="ew", pady=1)
 
-        ttk.Label(
-            content,
-            text="可写“今天吃了什么”，不写具体地点。",
-            style="Hint.TLabel",
-            wraplength=250,
-        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(2, 0))
-        ttk.Separator(content, orient="horizontal").grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
+        self._label(content, "可写“今天吃了什么”，不写具体地点。", dim=True, wrap=300).grid(
+            row=3, column=0, columnspan=2, sticky="w", pady=(2, 0)
+        )
+        efui.hairline(content).grid(row=4, column=0, columnspan=2, sticky="ew", pady=4)
 
-        ttk.Label(content, text="API 地址").grid(row=5, column=0, sticky="w", pady=1)
+        self._label(content, "API 地址").grid(row=5, column=0, sticky="w", pady=1, padx=(0, 8))
         self.llm_base_entry = ttk.Entry(content, textvariable=self.llm_base_var)
         self.llm_base_entry.grid(row=5, column=1, sticky="ew", pady=1)
-        ttk.Label(content, text="API Key").grid(row=6, column=0, sticky="w", pady=1)
+        self._label(content, "API Key").grid(row=6, column=0, sticky="w", pady=1, padx=(0, 8))
         self.llm_key_entry = ttk.Entry(content, textvariable=self.llm_key_var, show="*")
         self.llm_key_entry.grid(row=6, column=1, sticky="ew", pady=1)
-        ttk.Label(content, text="模型").grid(row=7, column=0, sticky="w", pady=1)
+        self._label(content, "模型").grid(row=7, column=0, sticky="w", pady=1, padx=(0, 8))
         self.llm_model_entry = ttk.Entry(content, textvariable=self.llm_model_var)
         self.llm_model_entry.grid(row=7, column=1, sticky="ew", pady=1)
-        temp_row = ttk.Frame(content)
-        temp_row.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(1, 0))
+
+        temp_row = tk.Frame(content, bg=efui.PANEL)
+        temp_row.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(2, 0))
         temp_row.columnconfigure(1, weight=1)
-        ttk.Label(temp_row, text="温度").grid(row=0, column=0, sticky="w")
+        self._label(temp_row, "温度").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.llm_temp_spin = ttk.Spinbox(
             temp_row, from_=0.0, to=2.0, increment=0.1, textvariable=self.llm_temp_var, width=6
         )
-        self.llm_temp_spin.grid(row=0, column=1, sticky="w", padx=(6, 8))
+        self.llm_temp_spin.grid(row=0, column=1, sticky="w", padx=(0, 8))
         self.show_key_check = ttk.Checkbutton(
             temp_row, text="显示 Key", variable=self.show_key_var, command=self._apply_key_state
         )
         self.show_key_check.grid(row=0, column=2, sticky="e")
-        ttk.Label(content, text="LLM 模式必须填写 Key；Key 会保存到 settings.json。", style="Hint.TLabel").grid(
-            row=9, column=0, columnspan=2, sticky="w", pady=(5, 0)
+        self._label(content, "LLM 模式必须填写 Key；Key 会保存到 settings.json。", dim=True, wrap=300).grid(
+            row=9, column=0, columnspan=2, sticky="w", pady=(4, 0)
         )
         self.llm_widgets = [
             self.llm_base_entry,
@@ -328,165 +503,197 @@ class App:
             self.show_key_check,
         ]
 
-        preset_row = ttk.Frame(content)
+        preset_row = tk.Frame(content, bg=efui.PANEL)
         preset_row.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(6, 0))
-        self.preset_btn = ttk.Button(preset_row, text="预置内容…", command=self.edit_preset, width=11)
+        self.preset_btn = efui.CutButton(preset_row, text="预置内容…", command=self.edit_preset, height=30, pad=14)
         self.preset_btn.grid(row=0, column=0, sticky="w")
         self.preset_pick_combo = ttk.Combobox(
             preset_row, textvariable=self.preset_pick_var, values=["按顺序", "随机"], state="readonly", width=6
         )
-        self.preset_pick_combo.grid(row=0, column=1, sticky="w", padx=(6, 0))
-        self.preset_hint_label = ttk.Label(content, text="", style="Hint.TLabel")
-        self.preset_hint_label.grid(row=11, column=0, columnspan=2, sticky="w", pady=(2, 0))
+        self.preset_pick_combo.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        self.preset_hint_label = self._label(content, "", dim=True, wrap=300)
+        self.preset_hint_label.grid(row=11, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
-        # 发帖设置
-        posting = ttk.LabelFrame(wrap, text="3. 发帖设置", padding=10)
-        posting.grid(row=0, column=2, sticky="nsew", padx=(8, 0))
+        # 03 发帖设置
+        posting_panel = efui.Panel(wrap, "POSTING", "发帖设置", "03")
+        posting_panel.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+        posting = tk.Frame(posting_panel.body, bg=efui.PANEL)
+        posting.grid(row=0, column=0, sticky="nsew")
         posting.columnconfigure(1, weight=1)
-        ttk.Label(posting, text="微社区").grid(row=0, column=0, sticky="w", pady=2)
+
+        self._label(posting, "微社区").grid(row=0, column=0, sticky="w", pady=1, padx=(0, 8))
         self.community_entry = ttk.Entry(posting, textvariable=self.community_var)
-        self.community_entry.grid(row=0, column=1, sticky="ew", pady=2)
-        ttk.Label(posting, text="版块").grid(row=1, column=0, sticky="w", pady=2)
+        self.community_entry.grid(row=0, column=1, sticky="ew", pady=1)
+        self._label(posting, "版块").grid(row=1, column=0, sticky="w", pady=1, padx=(0, 8))
         self.board_entry = ttk.Entry(posting, textvariable=self.board_var)
-        self.board_entry.grid(row=1, column=1, sticky="ew", pady=2)
-        ttk.Label(posting, text="留空使用页面默认的第一个微社区 / 版块。", style="Hint.TLabel").grid(
-            row=2, column=0, columnspan=2, sticky="w", pady=(0, 3)
+        self.board_entry.grid(row=1, column=1, sticky="ew", pady=1)
+        self._label(posting, "留空用页面默认的微社区 / 版块。", dim=True, wrap=300).grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=(0, 4)
         )
 
-        row = ttk.Frame(posting)
-        row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=2)
+        row = tk.Frame(posting, bg=efui.PANEL)
+        row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=1)
         row.columnconfigure(1, weight=1)
-        ttk.Label(row, text="间隔（秒）").grid(row=0, column=0, sticky="w")
+        self._label(row, "间隔（秒）").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.interval_spin = ttk.Spinbox(row, from_=10, to=86400, increment=10, textvariable=self.interval_var, width=7)
-        self.interval_spin.grid(row=0, column=1, sticky="w", padx=(5, 10))
-        ttk.Label(row, text="连续篇数").grid(row=0, column=2, sticky="w")
-        self.repeat_spin = ttk.Spinbox(row, from_=1, to=100, increment=1, textvariable=self.repeat_var, width=5)
-        self.repeat_spin.grid(row=0, column=3, sticky="w", padx=(5, 0))
+        self.interval_spin.grid(row=0, column=1, sticky="w", padx=(0, 12))
+        self._label(row, "连续篇数").grid(row=0, column=2, sticky="w", padx=(0, 8))
+        self.repeat_spin = ttk.Spinbox(row, from_=1, to=999, increment=1, textvariable=self.repeat_var, width=5)
+        self.repeat_spin.grid(row=0, column=3, sticky="w")
 
-        retry_row = ttk.Frame(posting)
-        retry_row.grid(row=4, column=0, columnspan=2, sticky="ew", pady=2)
+        retry_row = tk.Frame(posting, bg=efui.PANEL)
+        retry_row.grid(row=4, column=0, columnspan=2, sticky="ew", pady=1)
         retry_row.columnconfigure(1, weight=1)
-        ttk.Label(retry_row, text="失败重试").grid(row=0, column=0, sticky="w")
+        self._label(retry_row, "失败重试").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.retry_spin = ttk.Spinbox(retry_row, from_=0, to=10, increment=1, textvariable=self.retry_var, width=4)
-        self.retry_spin.grid(row=0, column=1, sticky="w", padx=(5, 8))
-        ttk.Label(retry_row, text="次，间隔").grid(row=0, column=2, sticky="w")
+        self.retry_spin.grid(row=0, column=1, sticky="w", padx=(0, 8))
+        self._label(retry_row, "次，间隔").grid(row=0, column=2, sticky="w", padx=(0, 8))
         self.retry_interval_spin = ttk.Spinbox(
             retry_row, from_=5, to=600, increment=5, textvariable=self.retry_interval_var, width=5
         )
-        self.retry_interval_spin.grid(row=0, column=3, sticky="w", padx=(5, 0))
-        ttk.Label(retry_row, text="秒").grid(row=0, column=4, sticky="w", padx=(3, 0))
+        self.retry_interval_spin.grid(row=0, column=3, sticky="w", padx=(0, 4))
+        self._label(retry_row, "秒").grid(row=0, column=4, sticky="w")
 
-        checks2 = ttk.Frame(posting)
-        checks2.grid(row=5, column=0, columnspan=2, sticky="w", pady=(1, 0))
+        checks2 = tk.Frame(posting, bg=efui.PANEL)
+        checks2.grid(row=5, column=0, columnspan=2, sticky="w", pady=(2, 0))
         ttk.Checkbutton(checks2, text="重试时换内容", variable=self.regenerate_var).grid(row=0, column=0, sticky="w")
         ttk.Checkbutton(checks2, text="HTTP 复核结果", variable=self.verify_http_var).grid(
-            row=0, column=1, sticky="w", padx=(8, 0)
+            row=0, column=1, sticky="w", padx=(10, 0)
         )
 
-        ttk.Label(posting, text="浏览器引擎").grid(row=6, column=0, sticky="w", pady=2)
+        self._label(posting, "浏览器引擎").grid(row=6, column=0, sticky="w", pady=1, padx=(0, 8))
         self.engine_combo = ttk.Combobox(
             posting, textvariable=self.engine_var, values=list(ENGINE_LABELS.values()), state="readonly", width=12
         )
-        self.engine_combo.grid(row=6, column=1, sticky="ew", pady=2)
+        self.engine_combo.grid(row=6, column=1, sticky="ew", pady=1)
 
-        checks = ttk.Frame(posting)
+        checks = tk.Frame(posting, bg=efui.PANEL)
         checks.grid(row=7, column=0, columnspan=2, sticky="w", pady=(4, 0))
         ttk.Checkbutton(checks, text="无界面", variable=self.headless_var).grid(row=0, column=0, sticky="w")
         ttk.Checkbutton(checks, text="发完保持浏览器", variable=self.keep_open_var).grid(
-            row=0, column=1, sticky="w", padx=(8, 0)
+            row=0, column=1, sticky="w", padx=(10, 0)
         )
-        ttk.Label(
-            posting,
-            text="间隔最低 10 秒；篇数 1-100；封面固定为“无图”。",
-            style="Hint.TLabel",
-        ).grid(row=8, column=0, columnspan=2, sticky="w", pady=(5, 0))
+        self._label(posting, "间隔最低 10 秒；篇数 1-999；封面固定为“无图”。", dim=True, wrap=300).grid(
+            row=8, column=0, columnspan=2, sticky="w", pady=(6, 0)
+        )
 
     def _build_manual_panel(self) -> None:
-        self.manual_frame = ttk.LabelFrame(self.root, text="需要人工验证", padding=8)
-        self.manual_frame.grid(row=2, column=0, sticky="ew", padx=16, pady=(2, 4))
-        self.manual_frame.columnconfigure(0, weight=1)
+        self.manual_frame = tk.Frame(self.root, bg=efui.PANEL, highlightbackground=efui.RULE, highlightthickness=1)
+        self.manual_frame.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 4))
+        self.manual_frame.columnconfigure(1, weight=1)
+
+        flag = tk.Frame(self.manual_frame, bg=efui.SIGNAL, width=4)
+        flag.grid(row=0, column=0, sticky="ns", padx=(12, 10), pady=10)
         self.manual_label = tk.Label(
             self.manual_frame,
             textvariable=self.manual_msg_var,
             anchor="w",
             justify="left",
             wraplength=1020,
-            bg="#fff4dc",
-            fg="#7a4b00",
-            padx=12,
-            pady=9,
-            font=("Microsoft YaHei UI", 10),
+            bg=efui.PANEL,
+            fg=efui.INK,
+            padx=0,
+            pady=0,
+            font=efui.ui(10),
         )
-        self.manual_label.grid(row=0, column=0, sticky="ew")
-        buttons = ttk.Frame(self.manual_frame)
-        buttons.grid(row=1, column=0, sticky="e", pady=(6, 0))
-        self.manual_focus_btn = ttk.Button(buttons, text="打开浏览器", command=self.focus_browser)
-        self.manual_focus_btn.grid(row=0, column=0, padx=3)
-        self.manual_ok_btn = ttk.Button(buttons, text="已完成，继续", command=self.complete_manual)
-        self.manual_ok_btn.grid(row=0, column=1, padx=3)
-        self.manual_cancel_btn = ttk.Button(buttons, text="取消本次", command=self.cancel_manual)
-        self.manual_cancel_btn.grid(row=0, column=2, padx=3)
+        self.manual_label.grid(row=0, column=1, sticky="ew", pady=(12, 4))
+
+        buttons = tk.Frame(self.manual_frame, bg=efui.PANEL)
+        buttons.grid(row=1, column=1, sticky="e", pady=(4, 10), padx=(0, 12))
+        self.manual_focus_btn = efui.CutButton(buttons, text="打开浏览器", command=self.focus_browser, height=30, pad=14)
+        self.manual_focus_btn.grid(row=0, column=0, padx=(0, 6))
+        self.manual_ok_btn = efui.CutButton(
+            buttons, text="已完成，继续", command=self.complete_manual, kind="primary", height=30, pad=14
+        )
+        self.manual_ok_btn.grid(row=0, column=1, padx=(0, 6))
+        self.manual_cancel_btn = efui.CutButton(
+            buttons, text="取消本次", command=self.cancel_manual, height=30, pad=14
+        )
+        self.manual_cancel_btn.grid(row=0, column=2)
         self.manual_frame.grid_remove()
 
     def _build_preview(self) -> None:
-        preview = ttk.LabelFrame(self.root, text="4. 帖子预览（可直接修改，发布时使用这里的文字）", padding=8)
-        preview.grid(row=3, column=0, sticky="nsew", padx=16, pady=4)
+        panel = efui.Panel(self.root, "PREVIEW", "帖子预览（可直接修改，发布时使用这里的文字）", "04")
+        panel.grid(row=4, column=0, sticky="nsew", padx=16, pady=4)
+        preview = panel.body
+        preview.columnconfigure(0, weight=0)
         preview.columnconfigure(1, weight=1)
         preview.rowconfigure(2, weight=1)
 
-        ttk.Label(preview, text="标题").grid(row=0, column=0, sticky="w", padx=(0, 6))
+        self._label(preview, "标题").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.title_entry = ttk.Entry(preview, textvariable=self.title_var)
         self.title_entry.grid(row=0, column=1, sticky="ew")
-        self.title_count_label = ttk.Label(preview, textvariable=self.title_count_var, style="Hint.TLabel", width=10)
-        self.title_count_label.grid(row=0, column=2, sticky="e", padx=(6, 0))
+        self.title_count_label = tk.Label(
+            preview, textvariable=self.title_count_var, font=efui.mono(9, "bold"), fg=efui.INK2, bg=efui.PANEL, width=8
+        )
+        self.title_count_label.grid(row=0, column=2, sticky="e", padx=(8, 0))
 
-        ttk.Label(preview, text="摘要").grid(row=1, column=0, sticky="w", padx=(0, 6), pady=(3, 0))
+        self._label(preview, "摘要").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(4, 0))
         self.summary_entry = ttk.Entry(preview, textvariable=self.summary_var)
-        self.summary_entry.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(3, 0))
-        ttk.Label(preview, text="可留空，由页面自动截取。", style="Hint.TLabel").grid(
-            row=1, column=3, sticky="w", padx=(6, 0), pady=(3, 0)
+        self.summary_entry.grid(row=1, column=1, sticky="ew", pady=(4, 0))
+        self._label(preview, "可留空，由页面自动截取。", dim=True).grid(
+            row=1, column=2, sticky="e", padx=(8, 0), pady=(4, 0)
         )
 
-        ttk.Label(preview, text="正文").grid(row=2, column=0, sticky="nw", padx=(0, 6), pady=(4, 0))
-        body_wrap = ttk.Frame(preview)
-        body_wrap.grid(row=2, column=1, columnspan=3, sticky="nsew", pady=(4, 0))
+        self._label(preview, "正文").grid(row=2, column=0, sticky="nw", padx=(0, 8), pady=(6, 0))
+        body_wrap = tk.Frame(preview, bg=efui.PANEL)
+        body_wrap.grid(row=2, column=1, columnspan=2, sticky="nsew", pady=(6, 0))
         body_wrap.columnconfigure(0, weight=1)
         body_wrap.rowconfigure(0, weight=1)
         self.body_text = tk.Text(
             body_wrap,
-            height=5,
+            height=4,
             wrap="word",
             undo=True,
-            relief="solid",
+            relief="flat",
             borderwidth=1,
-            font=("Microsoft YaHei UI", 10),
-            padx=8,
-            pady=6,
+            highlightthickness=1,
+            highlightbackground=efui.RULE,
+            highlightcolor=efui.INK,
+            bg=efui.PANEL,
+            fg=efui.INK,
+            insertbackground=efui.INK,
+            selectbackground=efui.SIGNAL,
+            selectforeground=efui.ON_SIGNAL,
+            font=efui.ui(10),
+            padx=10,
+            pady=8,
+            spacing1=2,
+            spacing3=2,
         )
         self.body_text.grid(row=0, column=0, sticky="nsew")
         body_scroll = ttk.Scrollbar(body_wrap, orient="vertical", command=self.body_text.yview)
         body_scroll.grid(row=0, column=1, sticky="ns")
         self.body_text.configure(yscrollcommand=body_scroll.set)
-        self.body_count_label = ttk.Label(preview, textvariable=self.body_count_var, style="Hint.TLabel")
-        self.body_count_label.grid(row=3, column=3, sticky="e", pady=(2, 0))
+        self.body_count_label = tk.Label(
+            preview, textvariable=self.body_count_var, font=efui.mono(9, "bold"), fg=efui.INK2, bg=efui.PANEL
+        )
+        self.body_count_label.grid(row=3, column=2, sticky="e", pady=(4, 0))
 
         self.title_var.trace_add("write", lambda *args: self._update_counts())
         for seq in ("<KeyRelease>", "<<Paste>>", "<<Cut>>", "<<Undo>>"):
             self.body_text.bind(seq, lambda event: self.root.after(10, self._update_counts))
 
     def _build_log(self) -> None:
-        log_frame = ttk.LabelFrame(self.root, text="5. 运行日志", padding=6)
-        log_frame.grid(row=4, column=0, sticky="nsew", padx=16, pady=4)
+        panel = efui.Panel(self.root, "LOG", "运行日志", "05", dark=True, pad=10)
+        panel.grid(row=5, column=0, sticky="nsew", padx=16, pady=4)
+        log_frame = panel.body
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
         self.log_text = tk.Text(
             log_frame,
-            height=6,
+            height=4,
             wrap="word",
             state="disabled",
-            relief="solid",
-            borderwidth=1,
-            font=("Consolas", 9),
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            bg=efui.LOG_BG,
+            fg=efui.LOG_FG,
+            insertbackground=efui.LOG_FG,
+            selectbackground=efui.SIGNAL,
+            selectforeground=efui.ON_SIGNAL,
+            font=efui.mono(9),
             padx=6,
             pady=4,
         )
@@ -494,48 +701,80 @@ class App:
         log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
         log_scroll.grid(row=0, column=1, sticky="ns")
         self.log_text.configure(yscrollcommand=log_scroll.set)
-        self.log_text.tag_configure("info", foreground="#24313d")
-        self.log_text.tag_configure("warn", foreground="#a35c00")
-        self.log_text.tag_configure("error", foreground="#b00020")
-        self.log_text.tag_configure("success", foreground="#0a7d32")
+        self.log_text.tag_configure("info", foreground="#C9C9C2")
+        self.log_text.tag_configure("warn", foreground=efui.SIGNAL)
+        self.log_text.tag_configure("error", foreground=efui.SIGNAL)
+        self.log_text.tag_configure("success", foreground="#FFFFFF")
 
     def _build_bottom(self) -> None:
-        bottom = ttk.Frame(self.root, padding=(16, 2, 16, 10))
-        bottom.grid(row=5, column=0, sticky="ew")
+        bottom = tk.Frame(self.root, bg=efui.PAPER)
+        bottom.grid(row=6, column=0, sticky="ew", padx=16, pady=(2, 8))
         bottom.columnconfigure(0, weight=1)
 
+        efui.hairline(bottom).grid(row=0, column=0, sticky="ew", pady=(0, 8))
+
+        result_wrap = tk.Frame(bottom, bg=efui.PANEL, highlightbackground=efui.RULE, highlightthickness=1)
+        result_wrap.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        result_wrap.columnconfigure(1, weight=1)
+        self.result_flag = tk.Frame(result_wrap, bg=efui.SIGNAL, width=4)
+        self.result_flag.grid(row=0, column=0, sticky="ns", padx=(10, 0), pady=8)
         self.result_label = tk.Label(
-            bottom,
+            result_wrap,
             textvariable=self.result_var,
             anchor="w",
             justify="left",
-            bg="#eef3f8",
-            fg="#1f4e79",
+            bg=efui.PANEL,
+            fg=efui.INK,
             padx=10,
-            pady=7,
-            font=("Microsoft YaHei UI", 10, "bold"),
+            pady=6,
+            font=efui.ui(10),
         )
-        self.result_label.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        self.result_label.grid(row=0, column=1, sticky="ew")
 
-        actions = ttk.Frame(bottom)
-        actions.grid(row=1, column=0, sticky="ew")
-        self.generate_btn = ttk.Button(actions, text="生成预览", command=self.generate_preview)
-        self.generate_btn.grid(row=0, column=0, padx=(0, 6))
-        self.start_btn = ttk.Button(actions, text="开始发帖", style="Accent.TButton", command=self.start_posting)
-        self.start_btn.grid(row=0, column=1, padx=6)
-        self.stop_btn = ttk.Button(actions, text="停止", command=self.stop_posting, state="disabled")
-        self.stop_btn.grid(row=0, column=2, padx=6)
-        self.save_btn = ttk.Button(actions, text="保存设置", command=self.save_settings_clicked)
-        self.save_btn.grid(row=0, column=3, padx=6)
-        self.captcha_btn = ttk.Button(actions, text="验证码", command=self.captcha_settings_clicked)
-        self.captcha_btn.grid(row=0, column=4, padx=6)
-        ttk.Button(actions, text="打开截图目录", command=self.open_screenshot_dir).grid(row=0, column=5, padx=6)
-        ttk.Button(actions, text="清空日志", command=self.clear_log).grid(row=0, column=6, padx=6)
-
-        ttk.Label(actions, textvariable=self.status_var, style="Status.TLabel").grid(
-            row=0, column=7, sticky="e", padx=(12, 8)
+        actions = tk.Frame(bottom, bg=efui.PAPER)
+        actions.grid(row=2, column=0, sticky="ew")
+        self.generate_btn = efui.CutButton(actions, text="生成预览", command=self.generate_preview, height=34)
+        self.generate_btn.grid(row=0, column=0, padx=(0, 8))
+        self.start_btn = efui.CutButton(
+            actions, text="开始发帖", command=self.start_posting, kind="primary", height=34
         )
-        ttk.Label(actions, textvariable=self.engine_label_var, style="Hint.TLabel").grid(row=0, column=8, sticky="e")
+        self.start_btn.grid(row=0, column=1, padx=(0, 8))
+        self.stop_btn = efui.CutButton(actions, text="停止", command=self.stop_posting, height=34)
+        self.stop_btn.configure(state="disabled")
+        self.stop_btn.grid(row=0, column=2, padx=(0, 8))
+        self.save_btn = efui.CutButton(actions, text="保存设置", command=self.save_settings_clicked, height=34)
+        self.save_btn.grid(row=0, column=3, padx=(0, 8))
+        self.captcha_btn = efui.CutButton(actions, text="验证码", command=self.captcha_settings_clicked, height=34)
+        self.captcha_btn.grid(row=0, column=4, padx=(0, 8))
+        efui.CutButton(actions, text="打开截图目录", command=self.open_screenshot_dir, height=34).grid(
+            row=0, column=5, padx=(0, 8)
+        )
+        efui.CutButton(actions, text="清空日志", command=self.clear_log, height=34).grid(row=0, column=6)
+
+        meta = tk.Frame(actions, bg=efui.PAPER)
+        meta.grid(row=0, column=7, sticky="e")
+        actions.columnconfigure(7, weight=1)
+        self.status_label = tk.Label(
+            meta,
+            textvariable=self.status_var,
+            bg=efui.PAPER,
+            fg=efui.INK,
+            font=efui.ui(10, "bold"),
+            anchor="e",
+        )
+        self.status_label.grid(row=0, column=0, sticky="e")
+        tk.Label(meta, text="│", bg=efui.PAPER, fg=efui.INK2, font=efui.mono(9)).grid(
+            row=0, column=1, sticky="e", padx=8
+        )
+        self.engine_label = tk.Label(
+            meta,
+            textvariable=self.engine_label_var,
+            bg=efui.PAPER,
+            fg=efui.INK2,
+            font=efui.mono(9),
+            anchor="e",
+        )
+        self.engine_label.grid(row=0, column=2, sticky="e")
 
     # ----------------------------------------------------------------- state
     def _mode_key(self) -> str:
@@ -938,10 +1177,19 @@ class App:
         try:
             title_len = len(self.title_var.get())
             body_len = len(self.body_text.get("1.0", "end-1c"))
-            self.title_count_var.set(f"{title_len}/30")
-            self.body_count_var.set(f"{body_len}/10000")
-            self.title_count_label.configure(foreground="#b00020" if title_len and not (5 <= title_len <= 30) else "#7a8794")
-            self.body_count_label.configure(foreground="#b00020" if body_len > 10000 else "#7a8794")
+            self.title_count_var.set(f"{title_len} / 30")
+            self.body_count_var.set(f"{body_len} / 10000")
+            title_bad = bool(title_len) and not (5 <= title_len <= 30)
+            body_bad = body_len > 10000
+            # 超出范围用强调色填充标出（不用红色：红色只留给删除）
+            self.title_count_label.configure(
+                foreground=efui.ON_SIGNAL if title_bad else efui.INK2,
+                bg=efui.SIGNAL if title_bad else efui.PANEL,
+            )
+            self.body_count_label.configure(
+                foreground=efui.ON_SIGNAL if body_bad else efui.INK2,
+                bg=efui.SIGNAL if body_bad else efui.PANEL,
+            )
         except Exception:
             pass
 
@@ -1239,12 +1487,12 @@ class App:
             text="用视觉模型识别（需要支持图片的模型，如 gpt-4o / qwen-vl-max / glm-4v）",
             variable=vision_enabled_var,
         ).grid(row=0, column=0, columnspan=2, sticky="w")
-        ttk.Label(vision_box, text="Base URL").grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Entry(vision_box, textvariable=vision_base_var).grid(row=1, column=1, sticky="ew", pady=2)
-        ttk.Label(vision_box, text="API Key").grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Entry(vision_box, textvariable=vision_key_var, show="*").grid(row=2, column=1, sticky="ew", pady=2)
-        ttk.Label(vision_box, text="模型名称").grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Entry(vision_box, textvariable=vision_model_var).grid(row=3, column=1, sticky="ew", pady=2)
+        ttk.Label(vision_box, text="Base URL").grid(row=1, column=0, sticky="w", pady=1)
+        ttk.Entry(vision_box, textvariable=vision_base_var).grid(row=1, column=1, sticky="ew", pady=1)
+        ttk.Label(vision_box, text="API Key").grid(row=2, column=0, sticky="w", pady=1)
+        ttk.Entry(vision_box, textvariable=vision_key_var, show="*").grid(row=2, column=1, sticky="ew", pady=1)
+        ttk.Label(vision_box, text="模型名称").grid(row=3, column=0, sticky="w", pady=1)
+        ttk.Entry(vision_box, textvariable=vision_model_var).grid(row=3, column=1, sticky="ew", pady=1)
         llm_cfg = (self.settings.get("content") or {}).get("llm") or {}
         inherit_base = self.captcha_vision_base_var.get().strip() or str(llm_cfg.get("base_url") or "")
         inherit_model = self.captcha_vision_model_var.get().strip() or str(llm_cfg.get("model") or "")
@@ -1921,16 +2169,18 @@ class App:
         self._emit_log("info", "本次任务结束。")
 
     def _set_result(self, text: str, kind: str) -> None:
-        colors = {
-            "info": ("#eef3f8", "#1f4e79"),
-            "success": ("#e6f5ea", "#0a6b2c"),
-            "error": ("#fdecef", "#a00020"),
-            "warn": ("#fff4dc", "#7a4b00"),
+        # 成功 = 白底墨字 + 墨色小旗；失败/待处理 = 强调色填充（红色只留给删除）
+        fills = {
+            "info": (efui.PANEL, efui.INK, efui.SIGNAL),
+            "success": (efui.PANEL, efui.INK, efui.INK),
+            "error": (efui.SIGNAL, efui.ON_SIGNAL, efui.INK),
+            "warn": (efui.SIGNAL, efui.ON_SIGNAL, efui.INK),
         }
-        bg, fg = colors.get(kind, colors["info"])
+        bg, fg, flag = fills.get(kind, fills["info"])
         self.result_var.set(text)
         try:
             self.result_label.configure(bg=bg, fg=fg)
+            self.result_flag.configure(bg=flag)
         except Exception:
             pass
 

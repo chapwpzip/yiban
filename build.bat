@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"
@@ -25,12 +25,15 @@ if exist "dist" rmdir /s /q "dist" 2>nul
 if exist "YibanAutoPoster.spec" del /q "YibanAutoPoster.spec" 2>nul
 
 echo [3/4] 使用 PyInstaller 打包...
+rem 本机没有内置 WebDriver 时就不打这一项（运行时会用 Selenium Manager 自动获取）
+set "DRIVER_DATA="
+if exist "drivers\msedgedriver.exe" set DRIVER_DATA=--add-data "drivers\msedgedriver.exe;drivers"
 %PYTHON_EXE% %PYTHON_ARGS% -m PyInstaller ^
     --noconfirm --clean --onefile --windowed ^
     --name YibanAutoPoster ^
     --icon "assets\yiban.ico" ^
     --add-data "assets;assets" ^
-    --add-data "drivers\msedgedriver.exe;drivers" ^
+    %DRIVER_DATA% ^
     --add-data "presets;presets" ^
     --collect-submodules selenium ^
     --hidden-import websocket ^

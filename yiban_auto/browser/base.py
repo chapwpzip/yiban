@@ -72,6 +72,44 @@ class BrowserEngine(abc.ABC):
         if not self.eval(expression):
             raise ElementNotFound("坐标 (" + str(x) + ", " + str(y) + ") 处没有可点击元素")
 
+    def click_at_dom(self, x: float, y: float) -> str:
+        """DOM 兜底点击：向命中元素派发完整的 pointer/mouse/click 事件链。
+
+        数美这类控件只监听 pointerdown/mousedown 而不是 click，单用 `element.click()`
+        经常没反应；这里把事件链补全，并在命中元素内部再往下钻几层，
+        避免点到 `pointer-events` 空壳层上。
+        """
+        expression = """
+        (function(px, py){
+          var el = document.elementFromPoint(px, py);
+          if (!el) return '';
+          var depth = 0;
+          while (el && el.firstElementChild && depth < 6) {
+            var kids = el.children, hit = null;
+            for (var i = 0; i < kids.length; i++) {
+              var r = kids[i].getBoundingClientRect();
+              if (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom) { hit = kids[i]; break; }
+            }
+            if (!hit) break;
+            el = hit; depth++;
+          }
+          var o = {bubbles:true, cancelable:true, composed:true, clientX:px, clientY:py,
+                   screenX:px, screenY:py, view:window, button:0, buttons:1, detail:1};
+          function pe(t, b){ try { el.dispatchEvent(new PointerEvent(t, Object.assign({}, o, {buttons:b}))); } catch(e){} }
+          function me(t, b){ try { el.dispatchEvent(new MouseEvent(t, Object.assign({}, o, {buttons:b}))); } catch(e){} }
+          pe('pointerover', 1); pe('pointerenter', 1); pe('pointermove', 1); pe('pointerdown', 1);
+          me('mouseover', 1); me('mousemove', 1); me('mousedown', 1);
+          pe('pointerup', 0); me('mouseup', 0); me('click', 0);
+          try { el.click(); } catch(e){}
+          return el.tagName + (el.className ? '.' + String(el.className).split(' ')[0] : '');
+        })(%s, %s)
+        """ % (repr(float(x)), repr(float(y)))
+        try:
+            value = self.eval(expression)
+            return str(value or "")
+        except Exception:
+            return ""
+
     @abc.abstractmethod
     def fill(self, selector: str, value: str, timeout: float = 15) -> None:
         raise NotImplementedError

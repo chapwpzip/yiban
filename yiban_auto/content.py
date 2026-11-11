@@ -265,7 +265,7 @@ def _generate_llm(topic: str, llm: Dict[str, Any]) -> GeneratedPost:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "YibanAutoPoster/1.2.0",
+            "User-Agent": "YibanAutoPoster/1.3.0",
         },
     )
     timeout = int(llm.get("timeout_seconds") or 90)

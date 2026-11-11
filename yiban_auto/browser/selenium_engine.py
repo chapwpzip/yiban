@@ -216,6 +216,12 @@ class SeleniumEngine(BrowserEngine):
                 raise BrowserError("点击元素失败：" + str(exc))
 
     def click_at(self, x: float, y: float) -> None:
+        """按视口坐标点击，优先用浏览器输入管线（可信事件），DOM 事件只作最后兜底。
+
+        数美等风控控件会校验 event.isTrusted：`element.click()` 派发的合成事件会被
+        直接忽略（表现为“点了没反应、验证码图不刷新”）。所以顺序是：
+        ① CDP Input.dispatchMouseEvent（最接近真人）② W3C Actions ③ DOM 事件链。
+        """
         if self.driver is None:
             raise BrowserError("Selenium 尚未启动。")
         common = {"x": float(x), "y": float(y), "button": "left", "clickCount": 1}
@@ -224,9 +230,23 @@ class SeleniumEngine(BrowserEngine):
             self.driver.execute_cdp_cmd("Input.dispatchMouseEvent", dict(common, type="mousePressed", buttons=1))
             self.wait(0.06)
             self.driver.execute_cdp_cmd("Input.dispatchMouseEvent", dict(common, type="mouseReleased", buttons=0))
-        except Exception:
-            # 老版本驱动/浏览器不支持 CDP 输入时，退化为 DOM 点击。
-            super().click_at(x, y)
+            self.last_click = "cdp"
+            return
+        except Exception as exc:
+            self._emit("info", "CDP 输入点击不可用（" + str(exc)[:80] + "），改用鼠标动作点击。")
+        try:
+            from selenium.webdriver.common.action_chains import ActionChains
+
+            actions = ActionChains(self.driver)
+            actions.move_by_offset(float(x), float(y)).click().perform()
+            ActionChains(self.driver).reset_actions()
+            self.last_click = "actions"
+            return
+        except Exception as exc:
+            self._emit("info", "鼠标动作点击不可用（" + str(exc)[:80] + "），改用 DOM 事件点击。")
+        self.last_click = "dom"
+        if not self.click_at_dom(x, y):
+            raise ElementNotFound("坐标 (" + str(x) + ", " + str(y) + ") 处没有可点击元素")
 
     def fill(self, selector: str, value: str, timeout: float = 15) -> None:
         from selenium.webdriver.common.keys import Keys
