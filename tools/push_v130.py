@@ -71,6 +71,9 @@ FILES = [
     "assets/captcha-sample.jpg",
     "assets/fonts/Saira.ttf",
     "assets/fonts/Saira-OFL.txt",
+    "docs/screenshot-main.png",
+    "docs/screenshot-presets.png",
+    "docs/screenshot-captcha.png",
     "docs/screenshot-v1.3.0.png",
     "presets/正能量预置内容.txt",
     "presets/正能量预置内容.json",
@@ -203,7 +206,9 @@ def main():
         "### 使用方法\n"
         "解压到普通目录 → 双击 `YibanAutoPoster.exe` → 填本人易班账号 → 点「开始发帖」。\n\n"
         "### 界面预览\n"
-        "![界面截图](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-v1.3.0.png)\n"
+        "![主界面](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-main.png)\n\n"
+        "![预置内容编辑器](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-presets.png)\n\n"
+        "![验证码设置](https://raw.githubusercontent.com/chapwpzip/yiban-autoposter/main/docs/screenshot-captcha.png)\n"
     )
     try:
         _, existing = request("GET", f"{API}/repos/{OWNER}/{REPO}/releases/tags/{TAG}", token)

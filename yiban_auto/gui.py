@@ -904,6 +904,7 @@ class App:
             return
         win = tk.Toplevel(self.root)
         win.title("预置内容（每条一个标题 + 一篇正文）")
+        win.configure(bg=efui.PANEL)
         win.transient(self.root)
         win.geometry("940x600")
         win.minsize(760, 480)
@@ -1315,6 +1316,7 @@ class App:
             return
         win = tk.Toplevel(self.root)
         win.title("验证码外接设置")
+        win.configure(bg=efui.PANEL)
         win.transient(self.root)
         win.resizable(False, False)
         frame = ttk.Frame(win, padding=14)
@@ -1498,7 +1500,7 @@ class App:
         inherit_model = self.captcha_vision_model_var.get().strip() or str(llm_cfg.get("model") or "")
         has_key = bool(self.captcha_vision_key_var.get().strip() or llm_cfg.get("api_key"))
         inherit_text = (
-            "留空 = 复用“2. 内容生成”：地址 " + (inherit_base or "（未填）")
+            "留空 = 复用“02 CONTENT 内容生成”：地址 " + (inherit_base or "（未填）")
             + "，模型 " + (inherit_model or "（未填）")
             + "；Key " + ("已配置" if has_key else "未配置 —— 视觉模型会被自动跳过，不影响离线识图")
         )
@@ -1598,7 +1600,7 @@ class App:
             if not solver.vision_key or not solver.vision_model:
                 messagebox.showwarning(
                     "缺少配置",
-                    "请填写视觉模型的 API Key 与模型名（或先在“2. 内容生成”里配置 LLM）。",
+                    "请填写视觉模型的 API Key 与模型名（或先在“02 CONTENT 内容生成”里配置 LLM）。",
                     parent=win,
                 )
                 return

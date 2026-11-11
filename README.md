@@ -10,7 +10,11 @@ Windows 桌面工具：填入**你本人**的易班账号，自动登录 → 自
 
 > ⚠️ 仅用于操作**你本人**的易班账号。请遵守平台规则，不要用于刷屏、广告或批量操控他人账号。
 
-![界面截图](docs/screenshot-v1.3.0.png)
+![界面截图](docs/screenshot-main.png)
+
+| 预置内容编辑器（导入 / 导出） | 验证码设置（离线识图 / 视觉模型 / 真实鼠标） |
+|---|---|
+| ![预置内容](docs/screenshot-presets.png) | ![验证码设置](docs/screenshot-captcha.png) |
 
 ## 功能
 
